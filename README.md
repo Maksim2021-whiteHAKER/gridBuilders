@@ -68,4 +68,3 @@ npm run dev
 * Разработчик: Максим Владимиров
 * GitHub: @Maksim2021-whiteHAKER
 * Email: maksim2014-4@yandex.ru
-
