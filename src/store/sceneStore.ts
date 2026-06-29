@@ -12,17 +12,21 @@ export interface SceneObject {
 
 interface SceneStore {
     objects: SceneObject[],
+    selectedId: string | null,
     addObj: (obj: SceneObject) => void,
     updateObj: (id: string, updates: Partial<SceneObject>) => void,
     deleteObj: (id: string) => void,
-    clearScene: () => void
+    clearScene: () => void,
+    selectObject: (id: string | null) => void
 }
 
 export const useSceneStore = create<SceneStore>((set) => ({
     objects: [],
-    
+    selectedId: null,
+  
     addObj: (obj) => set((state) => ({
-        objects: [...state.objects, obj]
+        objects: [...state.objects, obj],
+        selectedId: obj.id
     })),
 
     updateObj: (id, update) => set((state) => ({
@@ -32,9 +36,12 @@ export const useSceneStore = create<SceneStore>((set) => ({
     })),
 
     deleteObj: (id) => set((state) => ({
-        objects: state.objects.filter((o) => o.id !== id)
+        objects: state.objects.filter((o) => o.id !== id),
+        selectedId: state.selectedId === id ? null : state.selectedId
     })),
+
+    selectObject: (id) => set({selectedId: id}),
     
-    clearScene: () => set({objects: []}) 
+    clearScene: () => set({objects: [], selectedId: null})
 
 }));
