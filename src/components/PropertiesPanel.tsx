@@ -254,7 +254,7 @@ export function PropertiesPanel() {
                     marginTop: 8
                 }}
             >
-                🗑️ Удалить объект
+                🗑️ Удалить объект (delete)
             </button>
 
             <button

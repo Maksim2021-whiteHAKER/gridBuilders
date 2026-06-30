@@ -8,35 +8,21 @@ import * as THREE from 'three'
 
 function SceneObject({obj, isSelected, onSelect}:{obj:any, isSelected:boolean, onSelect: () => void}){
     const meshRef = useRef<any>(null);
-    const { updateObj } = useSceneStore();
+    const { updateObj, transformMode } = useSceneStore();
 
-    const handlePositionChange = () => {
+    const updateTransform = () => {
         if (meshRef.current){
             updateObj(obj.id, {
                 position: [
                     meshRef.current.position.x,
                     meshRef.current.position.y,
-                    meshRef.current.position.z
-                ]
-            })
-        }
-    }
-
-    const handleRotationChange = () => {
-        if (meshRef.current ){
-            updateObj(obj.id, {
+                    meshRef.current.position.z,
+                ],
                 rotation: [
                     meshRef.current.rotation.x,
                     meshRef.current.rotation.y,
                     meshRef.current.rotation.z
-                ]
-            })
-        }
-    }
-
-    const handleScaleChange = () => {
-        if (meshRef.current ){
-            updateObj(obj.id, {
+                ],
                 scale: [
                     meshRef.current.scale.x,
                     meshRef.current.scale.y,
@@ -66,8 +52,8 @@ function SceneObject({obj, isSelected, onSelect}:{obj:any, isSelected:boolean, o
         {isSelected && (
             <TransformControls 
                 object={meshRef.current} 
-                onObjectChange={handlePositionChange} 
-                onMouseUp={handlePositionChange}
+                mode={transformMode} 
+                onMouseUp={updateTransform}
             />
             )}
         </>

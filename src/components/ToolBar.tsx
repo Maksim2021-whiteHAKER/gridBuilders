@@ -16,6 +16,7 @@ const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
 export function ToolBar(){
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
+    const {transformMode, setTransformMode, selectedId} = useSceneStore();
 
     const handleAddObject = () => {
         addObject({
@@ -77,8 +78,68 @@ export function ToolBar(){
             >
                 Добавить Объект
             </button>
+            {selectedId && (
+                <>
+                    <label style={{
+                        color: 'rgb(255,255,255)',
+                        fontSize: 13,
+                        fontWeight: 200,
+                        marginTop: 8
+                    }}>Тип управления объектом</label>
+
+<div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                            onClick={() => setTransformMode('translate')}
+                            style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                background: transformMode === 'translate' ? '#aa3bff' : '#14151f',
+                                color: 'white',
+                                border: '1px solid #2e303a',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                fontSize: 12
+                            }}
+                            title="Перемещение (W)"
+                        >
+                            ↕️ W
+                        </button>
+                        <button
+                            onClick={() => setTransformMode('rotate')}
+                            style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                background: transformMode === 'rotate' ? '#aa3bff' : '#14151f',
+                                color: 'white',
+                                border: '1px solid #2e303a',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                fontSize: 12
+                            }}
+                            title="Вращение (E)"
+                        >
+                            🔄 R
+                        </button>
+                        <button
+                            onClick={() => setTransformMode('scale')}
+                            style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                background: transformMode === 'scale' ? '#aa3bff' : '#14151f',
+                                color: 'white',
+                                border: '1px solid #2e303a',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                fontSize: 12
+                            }}
+                            title="Масштаб (R)"
+                        >
+                            ⤢ S
+                        </button>
+                    </div>
+                </>
+            )}
           
         </div>
-
     )
 }
