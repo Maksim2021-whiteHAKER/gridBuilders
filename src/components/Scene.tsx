@@ -6,11 +6,39 @@ import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
 import * as THREE from 'three'
 
-function SceneObject({obj, isSelected, onSelect}:{obj:any, isSelected:boolean, onSelect: () => void}){
+function CreateObject({obj, isSelected, meshRef}:{obj:any, isSelected:boolean, meshRef: any}){
+    return(
+        <mesh ref={meshRef} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
+            onClick={(e) => {
+            e.stopPropagation()
+            useSceneStore.getState().selectObject(obj.id)
+        }}>
+            {obj.type === 'box' && <boxGeometry args={[1, 1, 1]} />}
+            {obj.type === 'sphere' && <sphereGeometry args={[0.5, 32, 32]} />}
+            {obj.type === 'cylinder' && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
+            {obj.type === 'cone' && <coneGeometry args={[0.5, 0.5, 1, 32]} />}
+            {obj.type === 'tor' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
+            {obj.type === 'pyramid' && <coneGeometry args={[0.5, 1, 4, 1]} />}
+            <meshStandardMaterial color={obj.color}/>
+            {isSelected && (<Outlines color="#aa3bff" thickness={2} angle={0.6}/>)}
+        </mesh>
+    )
+}
+
+function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean, onSelect: () => void}){
     const meshRef = useRef<any>(null);
     const { updateObj, transformMode } = useSceneStore();
+    const [isTransforming, setIsTransforming] = useState(false);
 
-    const updateTransform = () => {
+    useEffect(() => {
+        if (meshRef.current && !isTransforming){
+            meshRef.current.position.set(...obj.position);
+            meshRef.current.rotation.set(...obj.rotation);
+            meshRef.current.scale.set(...obj.scale);
+        }
+    }, [obj.position, obj.rotation, obj.scale, isTransforming]);
+
+    const handleObjectUpdate = () => {
         if (meshRef.current){
             updateObj(obj.id, {
                 position: [
@@ -34,28 +62,10 @@ function SceneObject({obj, isSelected, onSelect}:{obj:any, isSelected:boolean, o
 
     return(
         <>
-        <mesh ref={meshRef} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow onClick={(e) => {
-            e.stopPropagation()
-            useSceneStore.getState().selectObject(obj.id)
-        }}
-        onPointerMissed={e => e.stopPropagation()}
-        >
-            {obj.type === 'box' && <boxGeometry args={[1, 1, 1]} />}
-            {obj.type === 'sphere' && <sphereGeometry args={[0.5, 32, 32]} />}
-            {obj.type === 'cylinder' && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
-            {obj.type === 'cone' && <coneGeometry args={[0.5, 0.5, 1, 32]} />}
-            {obj.type === 'tor' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
-            {obj.type === 'pyramid' && <coneGeometry args={[0.5, 1, 4, 1]} />}
-            <meshStandardMaterial color={obj.color}/>
-            {isSelected && (<Outlines color="#aa3bff" thickness={2} angle={90}/>)}
-        </mesh>
-        {isSelected && (
-            <TransformControls 
-                object={meshRef.current} 
-                mode={transformMode} 
-                onMouseUp={updateTransform}
-            />
+            {isSelected && (
+                <TransformControls object={meshRef.current} mode={transformMode} onObjectChange={handleObjectUpdate} onMouseDown={() => setIsTransforming(true)} onMouseUp={() => setIsTransforming(false)}/>
             )}
+            <CreateObject obj={obj} isSelected={isSelected} meshRef={meshRef}/>      
         </>
     )
 }
@@ -63,7 +73,7 @@ function SceneObject({obj, isSelected, onSelect}:{obj:any, isSelected:boolean, o
 function ClickOutsideHandle(){
     const { camera, scene, gl} = useThree();
     const selectObject = useSceneStore((state) => state.selectObject);
-    const objects = useSceneStore((state) => state.objects);
+    // const objects = useSceneStore((state) => state.objects);
     const selectedId = useSceneStore((state) => state.selectedId);
 
     const mouseDownPos = useRef({x: 0, y: 0});
@@ -143,7 +153,6 @@ export function Scene_GB(){
                     sectionSize={8} 
                     followCamera={false} 
                     infiniteGrid={false}/>
- 
                     {/* Красная ось X */}
                     <Line points={[[-100, 0, 0], [100, 0, 0]]} color={COLORS.axisX} lineWidth={3} opacity={0.4} transparent/>
                     {/* Зелёная ось Y */}

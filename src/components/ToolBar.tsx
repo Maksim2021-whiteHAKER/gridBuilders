@@ -7,7 +7,7 @@ type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid';
 const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
     { value: 'box', name: '🔲 Куб' },
     { value: 'sphere', name: '🔘 Шар'},
-    { value: 'cylinder', name: '💈 Цилиндер'},
+    { value: 'cylinder', name: '💈 Цилиндр'},
     { value: 'cone', name: '🎉 Конус'},
     { value: 'tor', name: '⭕ Тор'},
     { value: 'pyramid', name: '🔺 Пирамида'}
@@ -16,7 +16,7 @@ const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
 export function ToolBar(){
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
-    const {transformMode, setTransformMode, selectedId} = useSceneStore();
+    const { transformMode, setTransformMode, selectedId, undo, redo, canUndo, canRedo } = useSceneStore();
 
     const handleAddObject = () => {
         addObject({
@@ -27,7 +27,7 @@ export function ToolBar(){
             scale: [5, 5, 5],
             color: '#bf8ff3'
         })
-    }
+    }  
     return (
         <div style={{
             position: 'absolute',
@@ -78,6 +78,47 @@ export function ToolBar(){
             >
                 Добавить Объект
             </button>
+
+            {/* Undo/Redo кнопки */}
+            <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                    onClick={undo}
+                    disabled={!canUndo()}
+                    style={{
+                        flex: 1,
+                        padding: '6px 8px',
+                        background: canUndo() ? '#14151f' : '#0a0b15',
+                        color: canUndo() ? 'white' : '#6b7280',
+                        border: '1px solid #2e303a',
+                        borderRadius: 4,
+                        cursor: canUndo() ? 'pointer' : 'not-allowed',
+                        fontSize: 12,
+                        opacity: canUndo() ? 1 : 0.5
+                    }}
+                    title="Отменить (Ctrl+Z)"
+                >
+                    ↶ Отмена
+                </button>
+                <button
+                    onClick={redo}
+                    disabled={!canRedo()}
+                    style={{
+                        flex: 1,
+                        padding: '6px 8px',
+                        background: canRedo() ? '#14151f' : '#0a0b15',
+                        color: canRedo() ? 'white' : '#6b7280',
+                        border: '1px solid #2e303a',
+                        borderRadius: 4,
+                        cursor: canRedo() ? 'pointer' : 'not-allowed',
+                        fontSize: 12,
+                        opacity: canRedo() ? 1 : 0.5
+                    }}
+                    title="Повторить (Ctrl+Y)"
+                >
+                    ↷ Вернуть
+                </button>
+            </div>
+
             {selectedId && (
                 <>
                     <label style={{
@@ -87,7 +128,7 @@ export function ToolBar(){
                         marginTop: 8
                     }}>Тип управления объектом</label>
 
-<div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
                         <button
                             onClick={() => setTransformMode('translate')}
                             style={{
@@ -116,7 +157,7 @@ export function ToolBar(){
                                 cursor: 'pointer',
                                 fontSize: 12
                             }}
-                            title="Вращение (E)"
+                            title="Вращение (R)"
                         >
                             🔄 R
                         </button>
@@ -132,14 +173,13 @@ export function ToolBar(){
                                 cursor: 'pointer',
                                 fontSize: 12
                             }}
-                            title="Масштаб (R)"
+                            title="Масштаб (S)"
                         >
                             ⤢ S
                         </button>
                     </div>
                 </>
             )}
-          
         </div>
     )
 }

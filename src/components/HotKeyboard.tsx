@@ -3,11 +3,24 @@ import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 
 export function KeyboardShortcuts(){
-    const { selectedId, deleteObj, duplicateObject, setTransformMode, selectObject } = useSceneStore()
+    const { selectedId, deleteObj, duplicateObject, setTransformMode, selectObject, undo, redo } = useSceneStore()
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z'){
+                e.preventDefault()
+                undo()
+                return
+            }           
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y'){
+                e.preventDefault()
+                redo()
+                return
+            }           
+
             if (!selectedId) return
 
             switch (e.key.toLowerCase()){
