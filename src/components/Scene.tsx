@@ -6,9 +6,9 @@ import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
 import * as THREE from 'three'
 
-function CreateObject({obj, isSelected, meshRef}:{obj:any, isSelected:boolean, meshRef: any}){
+function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
     return(
-        <mesh ref={meshRef} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
+        <mesh ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
             onClick={(e) => {
             e.stopPropagation()
             useSceneStore.getState().selectObject(obj.id)
@@ -25,47 +25,42 @@ function CreateObject({obj, isSelected, meshRef}:{obj:any, isSelected:boolean, m
     )
 }
 
-function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean, onSelect: () => void}){
-    const meshRef = useRef<any>(null);
+function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
+    const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
     const { updateObj, transformMode } = useSceneStore();
     const [isTransforming, setIsTransforming] = useState(false);
 
+    // Синхронизация стора с mesh
     useEffect(() => {
-        if (meshRef.current && !isTransforming){
-            meshRef.current.position.set(...obj.position);
-            meshRef.current.rotation.set(...obj.rotation);
-            meshRef.current.scale.set(...obj.scale);
+        if (mesh && !isTransforming){
+            mesh.position.set(...(obj.position) as [number, number, number]);
+            mesh.rotation.set(...(obj.rotation) as [number, number, number]);
+            mesh.scale.set(...(obj.scale) as [number, number, number]);
         }
-    }, [obj.position, obj.rotation, obj.scale, isTransforming]);
+    }, [obj.position, obj.rotation, obj.scale, isTransforming, mesh]);
 
-    const handleObjectUpdate = () => {
-        if (meshRef.current){
+    const handleObjectUpdateEnd = () => {
+        if (mesh){
             updateObj(obj.id, {
-                position: [
-                    meshRef.current.position.x,
-                    meshRef.current.position.y,
-                    meshRef.current.position.z,
-                ],
-                rotation: [
-                    meshRef.current.rotation.x,
-                    meshRef.current.rotation.y,
-                    meshRef.current.rotation.z
-                ],
-                scale: [
-                    meshRef.current.scale.x,
-                    meshRef.current.scale.y,
-                    meshRef.current.scale.z
-                ]
+                position: [ mesh.position.x, mesh.position.y, mesh.position.z ],
+                rotation: [ mesh.rotation.x, mesh.rotation.y, mesh.rotation.z ],
+                scale: [ mesh.scale.x, mesh.scale.y, mesh.scale.z ]
             })
         }
+        setIsTransforming(false)
     }
 
     return(
         <>
-            {isSelected && (
-                <TransformControls object={meshRef.current} mode={transformMode} onObjectChange={handleObjectUpdate} onMouseDown={() => setIsTransforming(true)} onMouseUp={() => setIsTransforming(false)}/>
+            <CreateObject obj={obj} isSelected={isSelected} setMesh={setMesh} />
+            {isSelected && mesh && (
+                <TransformControls 
+                    object={mesh}
+                    mode={transformMode} 
+                    onMouseDown={() => setIsTransforming(true)}
+                    onMouseUp={handleObjectUpdateEnd}
+                />
             )}
-            <CreateObject obj={obj} isSelected={isSelected} meshRef={meshRef}/>      
         </>
     )
 }
@@ -131,7 +126,6 @@ function ClickOutsideHandle(){
 export function Scene_GB(){
     const objects = useSceneStore((state) => state.objects);
     const selectedId = useSceneStore((state) => state.selectedId);
-    const selectObject = useSceneStore((state) => state.selectObject);
 
     return (
         <div style ={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
@@ -161,7 +155,7 @@ export function Scene_GB(){
                     <Line points={[[0, 0, -100], [0, 0, 100]]} color={COLORS.axisZ} lineWidth={3} opacity={0.4} transparent/>
 
                     {objects.map((obj) => (
-                        <SceneObject key={obj.id} obj={obj} isSelected={obj.id === selectedId} onSelect={() => selectObject(obj.id)}/>
+                        <SceneObject key={obj.id} obj={obj} isSelected={obj.id === selectedId}/>
                     ))}
                 <ClickOutsideHandle />    
                 <OrbitControls makeDefault/>
