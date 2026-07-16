@@ -16,7 +16,7 @@ const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
 export function ToolBar(){
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
-    const { transformMode, setTransformMode, selectedId, undo, redo, canUndo, canRedo } = useSceneStore();
+    const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo } = useSceneStore();
 
     const handleAddObject = () => {
         addObject({
@@ -119,7 +119,7 @@ export function ToolBar(){
                 </button>
             </div>
 
-            {selectedId && (
+            {selectedIds.length > 0 && (
                 <>
                     <label style={{
                         color: 'rgb(255,255,255)',

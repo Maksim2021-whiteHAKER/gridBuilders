@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 
 export function KeyboardShortcuts(){
-    const { selectedId, deleteObj, duplicateObject, setTransformMode, selectObject, undo, redo } = useSceneStore()
+    const { selectedIds, deleteObj, duplicateObject, setTransformMode, aselectObject, selectObject, undo, redo, selectAll } = useSceneStore()
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -19,24 +19,30 @@ export function KeyboardShortcuts(){
                 e.preventDefault()
                 redo()
                 return
-            }           
+            }
 
-            if (!selectedId) return
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a'){
+                e.preventDefault();
+                selectAll();
+                return
+            }
+
+            if (selectedIds.length === 0) return
 
             switch (e.key.toLowerCase()){
                 case 'w': setTransformMode('translate'); break;
                 case 'r': setTransformMode('rotate'); break;
                 case 's': setTransformMode('scale'); break;
-                case 'delete': deleteObj(selectedId); break;
-                case 'd': e.preventDefault(); duplicateObject(selectedId); break
+                case 'delete': deleteObj(selectedIds[0]); break;
+                case 'd': e.preventDefault(); duplicateObject(selectedIds[0]); break
             }
             if (e.key === 'Escape'){
-                selectObject(null);
+                aselectObject();
             }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [selectedId, deleteObj, duplicateObject, setTransformMode, selectObject])
+    }, [selectedIds, deleteObj, duplicateObject, setTransformMode, selectObject])
 
     return null
 }

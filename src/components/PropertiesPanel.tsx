@@ -2,9 +2,9 @@
 import { useSceneStore } from '../store/sceneStore'
 
 export function PropertiesPanel() {
-    const { selectedId, updateObj, deleteObj, selectObject } = useSceneStore()
+    const { selectedIds, updateObj, deleteObj, aselectObject } = useSceneStore()
     const selectedObject = useSceneStore((state) => 
-        state.objects.find((obj) => obj.id === selectedId)
+        state.objects.find((obj) => obj.id === selectedIds[0])
     )
 
     if (!selectedObject) {
@@ -258,7 +258,7 @@ export function PropertiesPanel() {
             </button>
 
             <button
-                onClick={() => selectObject(null)}
+                onClick={() => aselectObject()}
                 style={{
                     padding: '8px 16px',
                     background: 'transparent',

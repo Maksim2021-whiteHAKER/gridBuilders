@@ -68,8 +68,9 @@ function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
 function ClickOutsideHandle(){
     const { camera, scene, gl} = useThree();
     const selectObject = useSceneStore((state) => state.selectObject);
+    const aselectObject = useSceneStore((state) => state.aselectObject);
     // const objects = useSceneStore((state) => state.objects);
-    const selectedId = useSceneStore((state) => state.selectedId);
+    const selectedIds = useSceneStore((state) => state.selectedIds);
 
     const mouseDownPos = useRef({x: 0, y: 0});
     const isDragging = useRef(false);
@@ -107,8 +108,8 @@ function ClickOutsideHandle(){
 
             const intersects = raycaster.intersectObjects(meshes, false)
 
-            if (intersects.length === 0 && selectedId !== null){
-                selectObject(null)
+            if (intersects.length === 0 && selectedIds.length > 0){
+                aselectObject()
             }
         }
         canvas.addEventListener('mousedown', handleMouseDown)
@@ -119,13 +120,13 @@ function ClickOutsideHandle(){
             canvas.removeEventListener('mousemove', handleMouseMove)
             canvas.removeEventListener('mouseup', handleMouseUp)
         }
-    }, [camera, scene, gl, selectedId, selectObject])
+    }, [camera, scene, gl, selectedIds.length, selectObject, aselectObject])
     return null
 }
 
 export function Scene_GB(){
     const objects = useSceneStore((state) => state.objects);
-    const selectedId = useSceneStore((state) => state.selectedId);
+    const selectedIds = useSceneStore((state) => state.selectedIds);
 
     return (
         <div style ={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
@@ -155,7 +156,7 @@ export function Scene_GB(){
                     <Line points={[[0, 0, -100], [0, 0, 100]]} color={COLORS.axisZ} lineWidth={3} opacity={0.4} transparent/>
 
                     {objects.map((obj) => (
-                        <SceneObject key={obj.id} obj={obj} isSelected={obj.id === selectedId}/>
+                        <SceneObject key={obj.id} obj={obj} isSelected={selectedIds.includes(obj.id)}/>
                     ))}
                 <ClickOutsideHandle />    
                 <OrbitControls makeDefault/>

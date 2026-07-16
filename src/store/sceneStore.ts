@@ -14,7 +14,7 @@ type TransformMode = 'translate' | 'rotate' | 'scale'
 
 interface SceneState {
     objects: SceneObject[],
-    selectedId: string | null,
+    selectedIds: string[],
     transformMode: TransformMode
 }
 
@@ -28,10 +28,12 @@ interface SceneStore extends SceneState {
     updateObj: (id: string, updates: Partial<SceneObject>) => void,
     deleteObj: (id: string) => void,
     clearScene: () => void,
-    selectObject: (id: string | null) => void,
+    selectObject: (id: string ) => void,
+    aselectObject: () => void,
     setTransformMode: (mode: TransformMode) => void,
     duplicateObject: (id: string) => void,
-    
+    selectAll: () => void
+        
     // Undo/Redo
     undo: () => void,
     redo: () => void,
@@ -43,14 +45,14 @@ interface SceneStore extends SceneState {
 function getCurrentState(state: SceneStore): SceneState {
     return {
         objects: [...state.objects],
-        selectedId: state.selectedId,
+        selectedIds: [...state.selectedIds],
         transformMode: state.transformMode
     }
 }
 
 export const useSceneStore = create<SceneStore>((set, get) => ({
     objects: [],
-    selectedId: null,
+    selectedIds: [],
     transformMode: 'translate',
     past: [],
     future: [],
@@ -61,7 +63,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             past: [...state.past.slice(-49), getCurrentState(state)],
             future: [],
             objects: [...state.objects, obj],
-            selectedId: obj.id
+            selectedIds: [obj.id]
         })
     },
 
@@ -82,11 +84,13 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             past: [...state.past.slice(-49), getCurrentState(state)],
             future: [],
             objects: state.objects.filter((o) => o.id !== id),
-            selectedId: state.selectedId === id ? null : state.selectedId
+            selectedIds: state.selectedIds.filter((sid) => sid !== id)
         })
     },
 
-    selectObject: (id) => set({selectedId: id}),
+    selectObject: (id) => set({selectedIds: [id]}),
+
+    aselectObject: () => set({selectedIds: []}),
     
     clearScene: () => {
         const state = get()
@@ -94,7 +98,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             past: [...state.past.slice(-49), getCurrentState(state)],
             future: [],
             objects: [],
-            selectedId: null
+            selectedIds: []
         })
     },
 
@@ -117,9 +121,16 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 past: [...state.past.slice(-49), getCurrentState(state)],
                 future: [],
                 objects: [...state.objects, newObj],
-                selectedId: newObj.id
+                selectedIds: [newObj.id]
             })
         }
+    },
+
+    selectAll() {
+        const state = get();
+        const allIds = state.objects.map(obj => obj.id)
+        set ({ selectedIds: allIds})
+        
     },
 
     undo: () => {
