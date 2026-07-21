@@ -3,25 +3,27 @@ import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 
 export function KeyboardShortcuts(){
-    const { selectedIds, deleteObj, duplicateObject, setTransformMode, aselectObject, selectObject, undo, redo, selectAll } = useSceneStore()
+    const { selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, selectObject, undo, redo, selectAll, addToSelection } = useSceneStore()
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z'){
+            const ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+            if (ctrlOrCmd && e.key === 'z'){
                 e.preventDefault()
                 undo()
                 return
             }           
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y'){
+            if (ctrlOrCmd && e.key === 'y'){
                 e.preventDefault()
                 redo()
                 return
             }
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'a'){
+            if (ctrlOrCmd && e.key === 'a'){
                 e.preventDefault();
                 selectAll();
                 return
@@ -29,15 +31,22 @@ export function KeyboardShortcuts(){
 
             if (selectedIds.length === 0) return
 
+            const primId = selectedIds[0]
+
             switch (e.key.toLowerCase()){
                 case 'w': setTransformMode('translate'); break;
                 case 'r': setTransformMode('rotate'); break;
                 case 's': setTransformMode('scale'); break;
-                case 'delete': deleteObj(selectedIds[0]); break;
-                case 'd': e.preventDefault(); duplicateObject(selectedIds[0]); break
+                case 'delete': deleteObj(primId); break;
+                case 'd': e.preventDefault(); duplicateObject(primId); break
             }
+
+            if (ctrlOrCmd){
+                addToSelection(primId)
+            }
+
             if (e.key === 'Escape'){
-                aselectObject();
+                clearSelection();
             }
         }
         window.addEventListener('keydown', handleKeyDown)

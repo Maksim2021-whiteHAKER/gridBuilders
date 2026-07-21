@@ -29,7 +29,8 @@ interface SceneStore extends SceneState {
     deleteObj: (id: string) => void,
     clearScene: () => void,
     selectObject: (id: string ) => void,
-    aselectObject: () => void,
+    addToSelection: (id: string ) => void,
+    clearSelection: () => void,
     setTransformMode: (mode: TransformMode) => void,
     duplicateObject: (id: string) => void,
     selectAll: () => void
@@ -90,7 +91,16 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
 
     selectObject: (id) => set({selectedIds: [id]}),
 
-    aselectObject: () => set({selectedIds: []}),
+    addToSelection: (id) => {
+        const state = get()
+        if (state.selectedIds.includes(id)){
+            set ({selectedIds: state.selectedIds.filter(sid => sid !== id)})
+        } else {
+            set ({ selectedIds: [...state.selectedIds, id]})
+        }
+    },
+
+    clearSelection: () => set({selectedIds: []}),
     
     clearScene: () => {
         const state = get()

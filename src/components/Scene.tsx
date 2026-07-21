@@ -68,7 +68,7 @@ function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
 function ClickOutsideHandle(){
     const { camera, scene, gl} = useThree();
     const selectObject = useSceneStore((state) => state.selectObject);
-    const aselectObject = useSceneStore((state) => state.aselectObject);
+    const clearSelection = useSceneStore((state) => state.clearSelection);
     // const objects = useSceneStore((state) => state.objects);
     const selectedIds = useSceneStore((state) => state.selectedIds);
 
@@ -109,7 +109,7 @@ function ClickOutsideHandle(){
             const intersects = raycaster.intersectObjects(meshes, false)
 
             if (intersects.length === 0 && selectedIds.length > 0){
-                aselectObject()
+                clearSelection()
             }
         }
         canvas.addEventListener('mousedown', handleMouseDown)
@@ -120,7 +120,7 @@ function ClickOutsideHandle(){
             canvas.removeEventListener('mousemove', handleMouseMove)
             canvas.removeEventListener('mouseup', handleMouseUp)
         }
-    }, [camera, scene, gl, selectedIds.length, selectObject, aselectObject])
+    }, [camera, scene, gl, selectedIds.length, selectObject, clearSelection])
     return null
 }
 

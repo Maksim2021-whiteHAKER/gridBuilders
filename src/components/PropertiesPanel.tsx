@@ -2,7 +2,7 @@
 import { useSceneStore } from '../store/sceneStore'
 
 export function PropertiesPanel() {
-    const { selectedIds, updateObj, deleteObj, aselectObject } = useSceneStore()
+    const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
     const selectedObject = useSceneStore((state) => 
         state.objects.find((obj) => obj.id === selectedIds[0])
     )
@@ -258,7 +258,7 @@ export function PropertiesPanel() {
             </button>
 
             <button
-                onClick={() => aselectObject()}
+                onClick={() => clearSelection()}
                 style={{
                     padding: '8px 16px',
                     background: 'transparent',
