@@ -1,9 +1,10 @@
 // /src/components/Scene.tsx
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Line, TransformControls, Outlines } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
+import { GroupTransformControls } from './GroupTransformControls.tsx'
 import * as THREE from 'three'
 
 function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
@@ -11,12 +12,18 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
         <mesh ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
             onClick={(e) => {
             e.stopPropagation()
-            useSceneStore.getState().selectObject(obj.id)
+            const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
+            const store = useSceneStore.getState();
+            if (isCtrlOrCmd){
+                store.addToSelection(obj.id)                
+            } else {
+                store.selectObject(obj.id)
+            }
         }}>
             {obj.type === 'box' && <boxGeometry args={[1, 1, 1]} />}
             {obj.type === 'sphere' && <sphereGeometry args={[0.5, 32, 32]} />}
             {obj.type === 'cylinder' && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
-            {obj.type === 'cone' && <coneGeometry args={[0.5, 0.5, 1, 32]} />}
+            {obj.type === 'cone' && <coneGeometry args={[0.5, 1, 10, 32]} />}
             {obj.type === 'tor' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
             {obj.type === 'pyramid' && <coneGeometry args={[0.5, 1, 4, 1]} />}
             <meshStandardMaterial color={obj.color}/>
@@ -27,12 +34,12 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
 
 function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
     const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
-    const { updateObj, transformMode } = useSceneStore();
+    const { updateObj, transformMode, selectedIds } = useSceneStore();
     const [isTransforming, setIsTransforming] = useState(false);
 
     // Синхронизация стора с mesh
     useEffect(() => {
-        if (mesh && !isTransforming){
+        if (mesh && !isTransforming ) {
             mesh.position.set(...(obj.position) as [number, number, number]);
             mesh.rotation.set(...(obj.rotation) as [number, number, number]);
             mesh.scale.set(...(obj.scale) as [number, number, number]);
@@ -53,80 +60,73 @@ function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
     return(
         <>
             <CreateObject obj={obj} isSelected={isSelected} setMesh={setMesh} />
-            {isSelected && mesh && (
+            { selectedIds.length === 1 && isSelected && mesh && (
                 <TransformControls 
                     object={mesh}
                     mode={transformMode} 
                     onMouseDown={() => setIsTransforming(true)}
                     onMouseUp={handleObjectUpdateEnd}
                 />
-            )}
+            ) }
         </>
     )
 }
 
-function ClickOutsideHandle(){
-    const { camera, scene, gl} = useThree();
-    const selectObject = useSceneStore((state) => state.selectObject);
+function ClickOutsideHandle() {
+    const { camera, scene, gl } = useThree();
+    // Убедись, что в твоем сторе эта функция называется clearSelection или deselectAll
     const clearSelection = useSceneStore((state) => state.clearSelection);
-    // const objects = useSceneStore((state) => state.objects);
-    const selectedIds = useSceneStore((state) => state.selectedIds);
-
-    const mouseDownPos = useRef({x: 0, y: 0});
-    const isDragging = useRef(false);
 
     useEffect(() => {
-        const canvas = gl.domElement
+        const canvas = gl.domElement;
 
-        const handleMouseDown = (event: MouseEvent) => {
-            mouseDownPos.current = {x: event.clientX, y: event.clientY}
-            isDragging.current = false;
-        }
-
-        const handleMouseMove = (event: MouseEvent) => {
-            const dx = event.clientX - mouseDownPos.current.x
-            const dy = event.clientY - mouseDownPos.current.y
-            if (Math.sqrt(dx * dx + dy * dy) > 4){
-                isDragging.current = true
-            }
-
-        }
-
-        const handleMouseUp = (event: MouseEvent) => {
-            if (!isDragging.current && event.target !== canvas) return;
+        const handleDoubleClick = (event: MouseEvent) => {
+            // Игнорируем двойной клик, если он был не по самому canvas (например, по UI поверх)
+            if (event.target !== canvas) return;
 
             const mouse = new THREE.Vector2(
                 (event.clientX / window.innerWidth) * 2 - 1,
                 -(event.clientY / window.innerHeight) * 2 + 1
-            )
+            );
 
-            const raycaster = new THREE.Raycaster()
-            raycaster.setFromCamera(mouse, camera)
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
 
+            // Ищем пересечения только с объектами сцены (игнорируем системные, как гизмо)
             const meshes = scene.children.filter(
-                (child): child is THREE.Mesh => child.type === 'Mesh')
+                (child): child is THREE.Mesh => {
+                    return child.type === 'Mesh' && !(child as any).userData?.isSystemObject;
+                }
+            );
 
-            const intersects = raycaster.intersectObjects(meshes, false)
+            const intersects = raycaster.intersectObjects(meshes, false);
 
-            if (intersects.length === 0 && selectedIds.length > 0){
-                clearSelection()
+            // ✅ ГЛАВНОЕ УСЛОВИЕ: Если двойной клик попал в ПУСТОТУ -> снимаем выделение
+            if (intersects.length === 0) {
+                clearSelection();
+            } else {
+                // Опционально: если двойной клик попал в объект, можно ничего не делать, 
+                // или в будущем добавить фокус камеры на этот объект.
             }
-        }
-        canvas.addEventListener('mousedown', handleMouseDown)
-        canvas.addEventListener('mousemove', handleMouseMove)
-        canvas.addEventListener('mouseup', handleMouseUp)
+        };
+
+        // Слушаем именно двойной клик
+        canvas.addEventListener('dblclick', handleDoubleClick);
+
         return () => {
-            canvas.removeEventListener('mousedown', handleMouseDown)
-            canvas.removeEventListener('mousemove', handleMouseMove)
-            canvas.removeEventListener('mouseup', handleMouseUp)
-        }
-    }, [camera, scene, gl, selectedIds.length, selectObject, clearSelection])
-    return null
+            canvas.removeEventListener('dblclick', handleDoubleClick);
+        };
+    }, [camera, scene, gl, clearSelection]);
+
+    return null;
 }
 
 export function Scene_GB(){
     const objects = useSceneStore((state) => state.objects);
     const selectedIds = useSceneStore((state) => state.selectedIds);
+
+    const updateObj = useSceneStore((state) => state.updateObj);
+    const transformMode = useSceneStore((state) => state.transformMode);
 
     return (
         <div style ={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
@@ -158,6 +158,15 @@ export function Scene_GB(){
                     {objects.map((obj) => (
                         <SceneObject key={obj.id} obj={obj} isSelected={selectedIds.includes(obj.id)}/>
                     ))}
+
+                    {selectedIds.length > 1 && (
+                        <GroupTransformControls 
+                            selectedIds={selectedIds} 
+                            objects={objects} 
+                            updateObj={updateObj} 
+                            transformMode={transformMode}
+                        />
+                    )}
                 <ClickOutsideHandle />    
                 <OrbitControls makeDefault/>
             </Canvas>

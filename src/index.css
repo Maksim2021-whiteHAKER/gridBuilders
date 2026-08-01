@@ -1,3 +1,15 @@
+body, #root {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+input, text, textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* ===== RESET ===== */
 *, *::before, *::after {
   margin: 0;

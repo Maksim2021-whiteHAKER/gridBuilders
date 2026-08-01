@@ -170,7 +170,6 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             future: state.future.slice(1)
         })
     },
-
     canUndo: () => get().past.length > 0,
     canRedo: () => get().future.length > 0
 }))
