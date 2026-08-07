@@ -1,4 +1,4 @@
-// /scr/componetns/ToolBar.tsx
+// /src/components/ToolBar.tsx
 import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
 
@@ -16,7 +16,7 @@ const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
 export function ToolBar(){
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
-    const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo } = useSceneStore();
+    const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
     const handleAddObject = () => {
         addObject({
@@ -28,6 +28,7 @@ export function ToolBar(){
             color: '#bf8ff3'
         })
     }  
+
     return (
         <div style={{
             position: 'absolute',
@@ -36,7 +37,7 @@ export function ToolBar(){
             background: 'rgba(20, 21, 31, 0.95)',
             padding: 16,
             borderRadius: 8,
-            border: '1px solid var(--border)',
+            border: '1px solid var(--border, #2e303a)',
             zIndex: 1000,
             display: 'flex',
             flexDirection: 'column',
@@ -69,7 +70,7 @@ export function ToolBar(){
                 onClick={handleAddObject}
                 style={{
                     padding: '8px 16px',
-                    background: 'var(--accent)',
+                    background: 'var(--accent, #aa3bff)',
                     color: 'white',
                     border: 'none',
                     borderRadius: 4,
@@ -177,6 +178,43 @@ export function ToolBar(){
                         >
                             ⤢ S
                         </button>
+                    </div>
+
+                    {/* ✅ Исправленный блок Snap to Grid */}
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        marginTop: 4, 
+                        padding: '8px 12px',
+                        background: '#14151f', 
+                        borderRadius: 4, 
+                        border: '1px solid #2e303a'
+                    }}>
+                        <span style={{color: 'white', fontSize: 13, fontWeight: 200}}>
+                            Привязка к сетке
+                        </span>
+                        <label style={{position: 'relative', display: 'inline-block', width: 40, height: 22, cursor: 'pointer'}}>
+                            <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{opacity: 0, width: 0, height: 0}}/>
+                            <span style={{
+                                position: 'absolute', 
+                                top: 0, bottom: 0, left: 0, right: 0, 
+                                backgroundColor: snapEnabled ? '#aa3bff' : '#2e303a', 
+                                borderRadius: 22,
+                                transition: 'background-color 0.3s',
+                                boxShadow: snapEnabled ? '0 0 8px rgba(170, 59, 255, 0.4)' : 'none'
+                            }}></span>
+                            <span style={{
+                                position: 'absolute', 
+                                height: 16, 
+                                width: 16, 
+                                left: snapEnabled ? 21 : 3, 
+                                bottom: 3, 
+                                backgroundColor: 'white', 
+                                borderRadius: '50%', 
+                                transition: 'left 0.3s'
+                            }}></span>
+                        </label>
                     </div>
                 </>
             )}

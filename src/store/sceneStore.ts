@@ -15,7 +15,9 @@ type TransformMode = 'translate' | 'rotate' | 'scale'
 interface SceneState {
     objects: SceneObject[],
     selectedIds: string[],
-    transformMode: TransformMode
+    transformMode: TransformMode,
+    snapEnabled: boolean
+    gridSize: number
 }
 
 interface SceneStore extends SceneState {
@@ -33,7 +35,10 @@ interface SceneStore extends SceneState {
     clearSelection: () => void,
     setTransformMode: (mode: TransformMode) => void,
     duplicateObject: (id: string) => void,
-    selectAll: () => void
+    selectAll: () => void,
+
+    toggleSnap: () => void,
+    setGridSize: (size: number) => void,
         
     // Undo/Redo
     undo: () => void,
@@ -47,7 +52,9 @@ function getCurrentState(state: SceneStore): SceneState {
     return {
         objects: [...state.objects],
         selectedIds: [...state.selectedIds],
-        transformMode: state.transformMode
+        transformMode: state.transformMode,
+        snapEnabled: state.snapEnabled,
+        gridSize: state.gridSize
     }
 }
 
@@ -55,6 +62,8 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     objects: [],
     selectedIds: [],
     transformMode: 'translate',
+    snapEnabled: true,
+    gridSize: 1.0,
     past: [],
     future: [],
   
@@ -141,6 +150,15 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         const allIds = state.objects.map(obj => obj.id)
         set ({ selectedIds: allIds})
         
+    },
+
+    toggleSnap() {
+        const state = get();
+       set({snapEnabled: !state.snapEnabled}) 
+    },
+
+    setGridSize: (size: number) => {
+        set({gridSize: size})
     },
 
     undo: () => {

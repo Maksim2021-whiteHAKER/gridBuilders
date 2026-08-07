@@ -34,7 +34,7 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
 
 function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
     const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
-    const { updateObj, transformMode, selectedIds } = useSceneStore();
+    const { updateObj, transformMode, selectedIds, snapEnabled, gridSize } = useSceneStore();
     const [isTransforming, setIsTransforming] = useState(false);
 
     // Синхронизация стора с mesh
@@ -49,9 +49,9 @@ function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
     const handleObjectUpdateEnd = () => {
         if (mesh){
             updateObj(obj.id, {
-                position: [ mesh.position.x, mesh.position.y, mesh.position.z ],
-                rotation: [ mesh.rotation.x, mesh.rotation.y, mesh.rotation.z ],
-                scale: [ mesh.scale.x, mesh.scale.y, mesh.scale.z ]
+                position: [snapEnabled ? Math.round(mesh.position.x / gridSize) * gridSize : mesh.position.x, snapEnabled ? Math.round(mesh.position.y / gridSize) * gridSize : mesh.position.y, snapEnabled ? Math.round(mesh.position.z / gridSize) * gridSize : mesh.position.z],
+                rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z],
+                scale: [mesh.scale.x, mesh.scale.y, mesh.scale.z]
             })
         }
         setIsTransforming(false)
@@ -127,6 +127,8 @@ export function Scene_GB(){
 
     const updateObj = useSceneStore((state) => state.updateObj);
     const transformMode = useSceneStore((state) => state.transformMode);
+    const snapEnabled = useSceneStore((state) => state.snapEnabled);
+    const gridSize = useSceneStore((state) => state.gridSize);
 
     return (
         <div style ={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
@@ -144,8 +146,8 @@ export function Scene_GB(){
                 <Grid args={[500, 500]} 
                     cellColor={COLORS.gridMinor} 
                     sectionColor={COLORS.gridMajor} 
-                    cellSize={2} 
-                    sectionSize={8} 
+                    cellSize={1} 
+                    sectionSize={2.5} 
                     followCamera={false} 
                     infiniteGrid={false}/>
                     {/* Красная ось X */}
@@ -165,6 +167,8 @@ export function Scene_GB(){
                             objects={objects} 
                             updateObj={updateObj} 
                             transformMode={transformMode}
+                            snapEnabled={snapEnabled}
+                            gridSize={gridSize}
                         />
                     )}
                 <ClickOutsideHandle />    

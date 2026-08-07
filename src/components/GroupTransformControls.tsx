@@ -8,13 +8,17 @@ interface GroupTransformControlsProps {
     objects: SceneObject[];
     updateObj: (id: string, updates: Partial<SceneObject>) => void;
     transformMode: 'translate' | 'rotate' | 'scale';
+    snapEnabled: boolean;
+    gridSize: number;
 }
 
 export function GroupTransformControls({ 
     selectedIds, 
     objects, 
     updateObj, 
-    transformMode 
+    transformMode, 
+    snapEnabled,
+    gridSize,
 }: GroupTransformControlsProps) {
     
     const pivotRef = useRef<THREE.Group>(null);
@@ -32,9 +36,9 @@ export function GroupTransformControls({
     
     const isDragging = useRef(false);
 
-    // 1. ✅ ОПТИМИЗАЦИЯ: Зависим только от selectedIds. 
-    // Пересчет происходит только при изменении состава выделенных объектов, 
-    // а не при каждом обновлении их координат во время драга.
+    // 1. ✅ Вычисляем центр масс. Зависимость от objects необходима,
+    // чтобы центр масс обновлялся, если объекты были перемещены программно.
+    // Бесконечный цикл предотвращается проверкой !isDragging.current в useEffect.
     const centerOfMass = useMemo(() => {
         const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
         if (selectedObjects.length === 0) return { x: 0, y: 0, z: 0 };
@@ -47,7 +51,7 @@ export function GroupTransformControls({
         }
         const count = selectedObjects.length;
         return { x: sumX / count, y: sumY / count, z: sumZ / count };
-    }, [selectedIds]); // <-- Убрали 'objects' отсюда
+    }, [objects, selectedIds]);
 
     // 2. Синхронизируем пивот с центром масс ТОЛЬКО когда не тянем
     useEffect(() => {
@@ -118,10 +122,16 @@ export function GroupTransformControls({
             const initialScl = initialObjectScale.current.get(id);
 
             if (!initialPos || !initialRot || !initialScl) return;
+            const rawX = initialPos[0] + deltaPos.x;
+            const rawY = initialPos[1] + deltaPos.y;
+            const rawZ = initialPos[2] + deltaPos.z;
 
             if (transformMode === 'translate') {
                 updateObj(id, {
-                    position: [initialPos[0] + deltaPos.x, initialPos[1] + deltaPos.y, initialPos[2] + deltaPos.z]
+                    position: [
+                        snapEnabled ? Math.round(rawX / gridSize) * gridSize : rawX,
+                        snapEnabled ? Math.round(rawY / gridSize) * gridSize : rawY, 
+                        snapEnabled ? Math.round(rawZ / gridSize) * gridSize : rawZ]
                 });
             } else if (transformMode === 'rotate') {
                 updateObj(id, {
