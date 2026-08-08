@@ -1,12 +1,18 @@
 // /scr/componetns/PropertiesPanel.tsx
+import { useEffect, useState } from 'react';
 import { useSceneStore } from '../store/sceneStore'
 
 export function PropertiesPanel() {
-    const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
-    
+    const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore() 
     const objects = useSceneStore((state) => state.objects);
     const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
+
+    const [tempColor, setTempColor] = useState<string | null>(null)
     
+    useEffect(() => {
+        setTempColor(null);
+    }, [selectedIds])
+
     if (selectedIds.length === 0){
         return (
             <div style={{
@@ -29,6 +35,7 @@ export function PropertiesPanel() {
 
     const isMultiObj = selectedIds.length > 1;
     const firstObj = selectedObjects[0];
+    const displayColor = tempColor || firstObj.color;
 
     const handlePositionChange = (index: number, value: number) => {
         selectedObjects.forEach((obj) => {
@@ -55,8 +62,16 @@ export function PropertiesPanel() {
     }
 
     const handleColorChange = (value: string) => {
+        setTempColor(value);
         selectedObjects.forEach((obj) => {
-            updateObj(obj.id, {color: value})
+            updateObj(obj.id, {color: value}, true)
+        })
+    }
+
+    const handleColorFinalChange = (value: string) => {
+        setTempColor(null);
+        selectedObjects.forEach((obj) => {
+            updateObj(obj.id, {color: value}, false)
         })
     }
 
@@ -66,7 +81,7 @@ export function PropertiesPanel() {
 
     const inputStyle = {
         width: '100%', padding: '6px 8px', background: "#14151f", 
-        border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 13
+        border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12
     }
 
     return (
@@ -97,7 +112,7 @@ export function PropertiesPanel() {
                                 {axis}
                             </label>
                             <input type="number" step="0.1" value={firstObj.position[i].toFixed(1)} onChange={(e) => handlePositionChange(i, parseFloat(e.target.value))}
-                                style={{ width: '100%', padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }}
+                                style={inputStyle}
                             />
                         </div>
                     ))}
@@ -113,7 +128,7 @@ export function PropertiesPanel() {
                     {['X', 'Y', 'Z'].map((axis, i) => (
                         <div key={axis} style={{ flex: 1 }}>
                             <input type="number" step="0.1" value={firstObj.rotation[i].toFixed(1)} onChange={(e) => handleRotationChange(i, parseFloat(e.target.value))} 
-                            style={{ width: '100%', padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }}/>
+                            style={inputStyle}/>
                         </div>
                     ))}
                 </div>
@@ -128,7 +143,7 @@ export function PropertiesPanel() {
                     {['X', 'Y', 'Z'].map((axis, i) => (
                         <div key={axis} style={{ flex: 1 }}>
                             <input type="number" step="0.1" value={firstObj.scale[i].toFixed(1)} onChange={(e) => handleScaleChange(i, parseFloat(e.target.value))}
-                                style={{ width: '100%', padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }}/>
+                                style={inputStyle}/>
                         </div>
                     ))}
                 </div>
@@ -140,9 +155,9 @@ export function PropertiesPanel() {
                     Цвет {isMultiObj && '(применяется ко всем)'}
                 </label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)}
+                    <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
                     style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }}/>
-                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)}
+                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
                         style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }}/>
                 </div>
             </div>

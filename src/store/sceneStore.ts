@@ -27,7 +27,7 @@ interface SceneStore extends SceneState {
     
     // Действия
     addObj: (obj: SceneObject) => void,
-    updateObj: (id: string, updates: Partial<SceneObject>) => void,
+    updateObj: (id: string, updates: Partial<SceneObject>, skipHistory?: boolean) => void,
     deleteObj: (id: string) => void,
     clearScene: () => void,
     selectObject: (id: string ) => void,
@@ -62,6 +62,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     objects: [],
     selectedIds: [],
     transformMode: 'translate',
+    skipHistory: false,
     snapEnabled: true,
     gridSize: 1.0,
     past: [],
@@ -77,15 +78,23 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         })
     },
 
-    updateObj: (id, update) => {
+    updateObj: (id, update, skipHistory = false) => {
         const state = get()
-        set({
-            past: [...state.past.slice(-49), getCurrentState(state)],
-            future: [],
-            objects: state.objects.map((o) => 
-                o.id === id ? {...o, ...update} : o
-            )
-        })
+        if (skipHistory){
+            set({
+                objects: state.objects.map((o) => 
+                    o.id === id ? {...o, ...update} : o
+                )
+            })
+        } else {
+            set({
+                past: [...state.past.slice(-49), getCurrentState(state)],
+                future: [],
+                objects: state.objects.map((o) => 
+                    o.id === id ? {...o, ...update} : o
+                )
+            })
+        }
     },
 
     deleteObj: (id) => {
