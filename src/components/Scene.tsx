@@ -6,6 +6,7 @@ import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
 import { GroupTransformControls } from './GroupTransformControls.tsx'
 import * as THREE from 'three'
+import { KeyboardShortcuts } from './HotKeyboard.tsx'
 
 function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
     return(
@@ -173,6 +174,7 @@ export function Scene_GB(){
                     )}
                 <ClickOutsideHandle />    
                 <OrbitControls makeDefault/>
+                <KeyboardShortcuts />
             </Canvas>
         </div>
     )

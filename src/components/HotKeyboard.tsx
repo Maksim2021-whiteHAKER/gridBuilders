@@ -1,16 +1,52 @@
 import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
+import { useThree } from "@react-three/fiber";
+import * as THREE from 'three'
+
+export function calculateCenter(selectedIds: string[], objects: any[]) {
+    const selectedObjects = objects.filter((obj) => selectedIds.includes(obj.id));
+    if (selectedObjects.length === 0) return;
+
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+    for (const obj of selectedObjects) {
+        minX = Math.min(minX, obj.position[0]);
+        minY = Math.min(minY, obj.position[1]);
+        minZ = Math.min(minZ, obj.position[2]);
+        maxX = Math.max(maxX, obj.position[0]);
+        maxY = Math.max(maxY, obj.position[1]);
+        maxZ = Math.max(maxZ, obj.position[2]);
+    }
+
+    return {
+        x: (minX + maxX) / 2,
+        y: (minY + maxY) / 2,
+        z: (minZ + maxZ) / 2
+    }
+}
 
 export function KeyboardShortcuts() {
-    const { 
-        selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll } = useSceneStore();
-
+    const controls = useThree((state) => state.controls) as unknown as {
+        target: THREE.Vector3;
+        update: () => void;
+    };
+    const { selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll, objects } = useSceneStore();
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // Игнорируем ввод текста в полях
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             const ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+            if (e.key.toLocaleLowerCase() === 'f' && selectedIds.length > 0 && controls){
+                const center = calculateCenter(selectedIds, objects);
+                if (center) {
+                    controls.target.set(center.x, center.y, center.z)
+                    controls.update();
+                }
+                return;
+            }
 
             // 1. Глобальные хоткеи (работают всегда)
             if (ctrlOrCmd && e.key.toLowerCase() === 'z') {
@@ -70,7 +106,7 @@ export function KeyboardShortcuts() {
         return () => { 
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll]);
+    }, [selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll, objects, controls]);
 
     return null;
 }
