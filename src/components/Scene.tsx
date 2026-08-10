@@ -7,6 +7,7 @@ import { useSceneStore } from '../store/sceneStore.ts'
 import { GroupTransformControls } from './GroupTransformControls.tsx'
 import * as THREE from 'three'
 import { KeyboardShortcuts } from './HotKeyboard.tsx'
+import { MarqueeSelection } from './MarqueeSelection.tsx'
 
 function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
     return(
@@ -131,11 +132,44 @@ export function Scene_GB(){
     const snapEnabled = useSceneStore((state) => state.snapEnabled);
     const gridSize = useSceneStore((state) => state.gridSize);
 
+    const selectObject = useSceneStore((state) => state.selectObject);
+    const addToSelection = useSceneStore((state) => state.addToSelection);
+    const clearSelection = useSceneStore((state) => state.clearSelection);
+
+    const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null)
+
+    const handleSelectionComplete = (newSelection: string[], isCtrl: boolean) => {
+        if (newSelection.length > 0){
+            if (!isCtrl) {
+                clearSelection();
+                selectObject(newSelection[0]);
+                for (let i = 1; i < newSelection.length; i++) {
+                    addToSelection(newSelection[i]);
+                }
+            } else {
+                 newSelection.forEach(id => addToSelection(id))
+            }
+        } else if (!isCtrl) {
+            clearSelection();
+        }
+    }
+
     return (
         <div style ={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
-            <Canvas shadows dpr={[1, 2]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: true, alpha: false}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}
-            >
-                    
+            {marquee && (
+                <div style={{
+                    position: 'fixed',
+                    left: Math.min(marquee.start.x, marquee.end.x),
+                    top: Math.min(marquee.start.y, marquee.end.y),
+                    width: Math.abs(marquee.end.x - marquee.start.x),
+                    height: Math.abs(marquee.end.y - marquee.start.y),
+                    border: '2px solid rgb(79, 7, 135)',
+                    backgroundColor: 'rgba(170, 59, 255, 0.15)',
+                    pointerEvents: 'none',
+                    zIndex: 9999
+                }} />
+            )}
+            <Canvas shadows dpr={[1, 2]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: true, alpha: false}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}>                  
                 <color attach='background' args={[COLORS.bg]}/>
                 <ambientLight intensity={0.5}/>
                 <directionalLight 
@@ -175,6 +209,7 @@ export function Scene_GB(){
                 <ClickOutsideHandle />    
                 <OrbitControls makeDefault/>
                 <KeyboardShortcuts />
+                <MarqueeSelection onMarqueeChange={setMarquee} onSelectionComplete={handleSelectionComplete} />
             </Canvas>
         </div>
     )

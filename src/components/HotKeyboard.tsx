@@ -69,9 +69,9 @@ export function KeyboardShortcuts() {
 
             // 2. Хоткеи режимов трансформации (работают всегда, даже без выделения)
             switch (e.key.toLowerCase()) {
-                case 'w': setTransformMode('translate'); return;
-                case 'r': setTransformMode('rotate'); return;
-                case 's': setTransformMode('scale'); return;
+                case 'w':'ц'; setTransformMode('translate'); return;
+                case 'r':'к'; setTransformMode('rotate'); return;
+                case 's':'ы'; setTransformMode('scale'); return;
             }
 
             // 3. Хоткеи, требующие выделения
