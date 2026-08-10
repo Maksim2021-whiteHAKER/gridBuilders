@@ -8,7 +8,12 @@ export interface SceneObject {
     position: [number, number, number],
     rotation: [number, number, number],
     scale: [number, number, number],
-    color: string
+    color: string,
+    opacity: number,
+    metalness: number,
+    roughness: number,
+    wireframe: boolean
+
 }
 
 type TransformMode = 'translate' | 'rotate' | 'scale'
@@ -100,7 +105,13 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         set({
             past: [...state.past.slice(-49), getCurrentState(state)],
             future: [],
-            objects: [...state.objects, obj],
+            objects: [...state.objects, {
+                ...obj,
+                opacity: 1.0,
+                metalness: 0.0,
+                roughness: 0.5,
+                wireframe: false
+            }],
             selectedIds: [obj.id]
         })
         get().saveToLocalStorage();

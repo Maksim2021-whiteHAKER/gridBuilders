@@ -28,7 +28,10 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
             {obj.type === 'cone' && <coneGeometry args={[0.5, 1, 10, 32]} />}
             {obj.type === 'tor' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
             {obj.type === 'pyramid' && <coneGeometry args={[0.5, 1, 4, 1]} />}
-            <meshStandardMaterial color={obj.color}/>
+            <meshStandardMaterial 
+            color={obj.color} transparent={obj.opacity < 1} opacity={obj.opacity} metalness={obj.metalness}
+            roughness={obj.roughness} wireframe={obj.wireframe} depthWrite={obj.opacity === 1} 
+            alphaTest={obj.opacity < 1 ? 0.01 : 0}/>
             {isSelected && (<Outlines color="#aa3bff" thickness={2} angle={0.6}/>)}
         </mesh>
     )

@@ -27,7 +27,11 @@ export function ToolBar(){
             position: [0, 0, 0],
             rotation: [0, 0, 0],
             scale: [5, 5, 5],
-            color: '#bf8ff3'
+            color: '#bf8ff3',
+            opacity: 1.0,
+            metalness: 0.0,
+            roughness: 0.5,
+            wireframe: false
         })
     }  
 
