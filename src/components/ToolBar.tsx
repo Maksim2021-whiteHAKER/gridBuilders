@@ -16,6 +16,8 @@ const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
 export function ToolBar(){
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
+    const exportToJSON = useSceneStore((state) => state.exportJSON);
+    const importToJSON = useSceneStore((state) => state.importJSON);
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
     const handleAddObject = () => {
@@ -28,6 +30,29 @@ export function ToolBar(){
             color: '#bf8ff3'
         })
     }  
+
+    const handleImport = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (eventRead) => {
+                    const json = eventRead.target?.result as string;
+                    const success = importToJSON(json);
+                    if (success) {
+                        alert("Сцена загружена! Приятного пользования")
+                    } else {
+                        alert("Сцена не загружена, проверьте формат, он должен быть JSON")
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+        input.click();
+    }
 
     return (
         <div style={{
@@ -180,8 +205,7 @@ export function ToolBar(){
                         </button>
                     </div>
 
-                    {/* ✅ Исправленный блок Snap to Grid */}
-                    <div style={{ 
+                     <div style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between', 
@@ -218,6 +242,19 @@ export function ToolBar(){
                     </div>
                 </>
             )}
+            <div style={{marginTop: 8, paddingTop: 4, alignItems: 'center', border: '1px solid #2e303a', display: 'flex', flexDirection: 'column', gap: 6}}>
+                <label style={{color: 'white', fontSize: 12, fontWeight: 200}}>Сохранение сцены / загрузка из ...</label>
+                <div style={{display: 'flex', gap: 4}}>
+                    <button onClick={exportToJSON}
+                    style={{ flex: 1, padding: '6px 8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Скачать сцену из JSON'>
+                        Скачать (JSON)
+                    </button>
+                    <button onClick={handleImport}
+                    style={{ flex: 1, padding: '6px 8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Выгрузить сцену из JSON'>
+                        Загрузить из ...
+                    </button>
+                </div>
+            </div>
         </div>
     )
 }

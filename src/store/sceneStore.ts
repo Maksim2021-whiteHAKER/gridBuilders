@@ -1,5 +1,6 @@
 // /src/store/sceneStore.ts
 import { create } from "zustand";
+import { version } from "../../package.json"
 
 export interface SceneObject {
     id: string,
@@ -39,6 +40,12 @@ interface SceneStore extends SceneState {
 
     toggleSnap: () => void,
     setGridSize: (size: number) => void,
+
+    // Сохранение\загрузка
+    saveToLocalStorage: () => void,
+    loadFromLocalStorage: () => void,
+    exportJSON: () => void,
+    importJSON: (jsonString: string) => boolean,
         
     // Undo/Redo
     undo: () => void,
@@ -46,6 +53,27 @@ interface SceneStore extends SceneState {
     canUndo: () => boolean,
     canRedo: () => boolean
 }
+
+const loadInitialState = (): Partial<SceneState> => {
+    try {
+        const saved = localStorage.getItem('gridbuilders_scene');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return {
+                objects: parsed.objects || [],
+                selectedIds: [],
+                transformMode: parsed.transformMode || 'translate',
+                snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
+                gridSize: parsed.gridSize || 1.0,
+            };
+        } 
+    } catch (e) {
+        console.error("Провалена загрузка из Локального хранилища: "+e)
+    }
+    return {};
+}
+
+const initialState = loadInitialState();
 
 // ✅ Внутренняя функция — не попадает в публичный API
 function getCurrentState(state: SceneStore): SceneState {
@@ -59,14 +87,13 @@ function getCurrentState(state: SceneStore): SceneState {
 }
 
 export const useSceneStore = create<SceneStore>((set, get) => ({
-    objects: [],
+    objects: initialState.objects || [],
     selectedIds: [],
-    transformMode: 'translate',
-    skipHistory: false,
-    snapEnabled: true,
-    gridSize: 1.0,
+    transformMode: initialState.transformMode || 'translate',
+    snapEnabled: initialState.snapEnabled !== undefined ? initialState.snapEnabled : true,
+    gridSize: initialState.gridSize || 1.0,
     past: [],
-    future: [],
+    future: [],   
   
     addObj: (obj) => {
         const state = get()
@@ -76,6 +103,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             objects: [...state.objects, obj],
             selectedIds: [obj.id]
         })
+        get().saveToLocalStorage();
     },
 
     updateObj: (id, update, skipHistory = false) => {
@@ -95,6 +123,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 )
             })
         }
+        get().saveToLocalStorage();
     },
 
     deleteObj: (id) => {
@@ -105,6 +134,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             objects: state.objects.filter((o) => o.id !== id),
             selectedIds: state.selectedIds.filter((sid) => sid !== id)
         })
+        get().saveToLocalStorage();
     },
 
     selectObject: (id) => set({selectedIds: [id]}),
@@ -128,6 +158,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             objects: [],
             selectedIds: []
         })
+        get().saveToLocalStorage();
     },
 
     setTransformMode: (mode) => set({transformMode: mode}),
@@ -151,6 +182,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 objects: [...state.objects, newObj],
                 selectedIds: [newObj.id]
             })
+            get().saveToLocalStorage();
         }
     },
 
@@ -162,13 +194,100 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     },
 
     toggleSnap() {
-        const state = get();
+       const state = get();
        set({snapEnabled: !state.snapEnabled}) 
+       get().saveToLocalStorage();
     },
 
     setGridSize: (size: number) => {
         set({gridSize: size})
+        get().saveToLocalStorage();
     },
+
+    //сохран и загруз
+    saveToLocalStorage: () => {
+        const state = get();
+        const sceneData = {
+           objects: state.objects,
+           transformMode: state.transformMode,
+           snapEnabled: state.snapEnabled,
+           gridSize: state.gridSize,
+           savedAt: new Date().toISOString()
+        };
+        try {
+            localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData))
+        } catch (e) {
+            console.error("Провал сохранения в Локальное хранилище: " + e);
+        }
+    },
+
+    loadFromLocalStorage: () => {
+        try {
+            const saved = localStorage.getItem('gridbuilders_scene');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                set({
+                    objects: parsed.objects || [],
+                    selectedIds: [],
+                    transformMode: parsed.transformMode || 'translate',
+                    snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
+                    gridSize: parsed.gridSize || 1.0,
+                    past: [],
+                    future: [],
+                });
+            } 
+        } catch (e) {
+            console.error("Провалена загрузка из Локального хранилища: " + e)
+        }
+    },
+
+    exportJSON: () => {
+        const state = get();
+        const sceneData = {
+            version: version,
+            exportedAt: new Date().toISOString(), 
+            objects: state.objects,
+            transformMode: state.transformMode,
+            snapEnabled: state.snapEnabled,
+            gridSize: state.gridSize
+        }
+        const json = JSON.stringify(sceneData, null, 2);
+        const blob = new Blob([json], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `gridbuilders_scene_${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url)
+    },
+
+    importJSON: (jsonString: string) => {
+        try {
+            const parsed = JSON.parse(jsonString);
+            if (!parsed.objects || !Array.isArray(parsed.objects)){
+                throw new Error("Неверный формат сцены");
+            }
+            const state = get();
+            set({
+                past: [...state.past.slice(-49), getCurrentState(state)],
+                future: [],
+                objects: parsed.objects,
+                selectedIds: [],
+                transformMode: parsed.transformMode || 'translate',
+                snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
+                gridSize: parsed.gridSize || 1.0,            
+            })
+            get().saveToLocalStorage();
+            return true;
+        } catch (e) {
+            console.error("Провал JSON импорта: " + e);
+            return false;
+        }
+    },    
+    // 
 
     undo: () => {
         const state = get()
@@ -182,6 +301,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             past: state.past.slice(0, -1),
             future: [currentState, ...state.future]
         })
+        get().saveToLocalStorage();
     },
 
     redo: () => {
@@ -196,7 +316,9 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             past: [...state.past, currentState],
             future: state.future.slice(1)
         })
+        get().saveToLocalStorage();
     },
+
     canUndo: () => get().past.length > 0,
     canRedo: () => get().future.length > 0
 }))
