@@ -1,6 +1,6 @@
 // /src/components/Scene.tsx
 import { useEffect, useState } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Line, TransformControls, Outlines } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
@@ -10,6 +10,7 @@ import { KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 
 function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
+    const texture = obj.textureUrl ? useLoader(THREE.TextureLoader, obj.textureUrl) as THREE.Texture : undefined;    
     return(
         <mesh ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
             onClick={(e) => {
@@ -29,7 +30,7 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
             {obj.type === 'tor' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
             {obj.type === 'pyramid' && <coneGeometry args={[0.5, 1, 4, 1]} />}
             <meshStandardMaterial 
-            color={obj.color} transparent={obj.opacity < 1} opacity={obj.opacity} metalness={obj.metalness}
+            color={obj.color} map={texture} transparent={obj.opacity < 1} opacity={obj.opacity} metalness={obj.metalness}
             roughness={obj.roughness} wireframe={obj.wireframe} depthWrite={obj.opacity === 1} 
             alphaTest={obj.opacity < 1 ? 0.01 : 0}/>
             {isSelected && (<Outlines color="#aa3bff" thickness={2} angle={0.6}/>)}

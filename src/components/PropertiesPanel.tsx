@@ -166,6 +166,107 @@ export function PropertiesPanel() {
                 </div>
             </div>
 
+                        {/* ✅ Текстура */}
+                        <div>
+                <label style={labelStyle}>
+                    Текстура {isMultiObj && '(применяется к первому объекту)'}
+                </label>
+
+                {/* Превью текстуры */}
+                {firstObj.textureUrl && (
+                    <div style={{
+                        marginBottom: 8,
+                        position: 'relative',
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        border: '1px solid #2e303a'
+                    }}>
+                        <img
+                            src={firstObj.textureUrl}
+                            alt="Texture preview"
+                            style={{
+                                width: '100%',
+                                height: 80,
+                                objectFit: 'cover',
+                                display: 'block'
+                            }}
+                        />
+                        <button
+                            onClick={() => {
+                                selectedObjects.forEach((obj) => {
+                                    updateObj(obj.id, { textureUrl: undefined });
+                                });
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: 4,
+                                right: 4,
+                                background: 'rgba(255, 95, 86, 0.9)',
+                                border: 'none',
+                                borderRadius: 4,
+                                color: 'white',
+                                width: 24,
+                                height: 24,
+                                cursor: 'pointer',
+                                fontSize: 16,
+                                lineHeight: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                            title="Удалить текстуру"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
+
+                {/* Кнопка загрузки */}
+                <button
+                    onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                    const textureUrl = event.target?.result as string;
+                                    // Применяем ко всем выделенным объектам
+                                    selectedObjects.forEach((obj) => {
+                                        updateObj(obj.id, { textureUrl });
+                                    });
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        };
+                        input.click();
+                    }}
+                    style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        background: '#14151f',
+                        color: '#e4e4e7',
+                        border: '1px dashed #2e303a',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = '#aa3bff';
+                        e.currentTarget.style.background = '#1a1b26';
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = '#2e303a';
+                        e.currentTarget.style.background = '#14151f';
+                    }}
+                >
+                    {firstObj.textureUrl ? '🔄 Заменить текстуру' : '📁 Загрузить текстуру'}
+                </button>
+            </div>
+
             {/* прозрачность */}
             <div>
                 <label style={labelStyle}>

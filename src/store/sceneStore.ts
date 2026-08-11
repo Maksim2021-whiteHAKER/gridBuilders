@@ -12,8 +12,8 @@ export interface SceneObject {
     opacity: number,
     metalness: number,
     roughness: number,
-    wireframe: boolean
-
+    wireframe: boolean,
+    textureUrl?: string,
 }
 
 type TransformMode = 'translate' | 'rotate' | 'scale'
@@ -110,7 +110,8 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 opacity: 1.0,
                 metalness: 0.0,
                 roughness: 0.5,
-                wireframe: false
+                wireframe: false,
+                textureUrl: undefined,
             }],
             selectedIds: [obj.id]
         })
