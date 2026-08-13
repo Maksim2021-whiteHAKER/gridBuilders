@@ -3,17 +3,17 @@ import { useEffect, useState } from 'react';
 import { useSceneStore } from '../store/sceneStore'
 
 export function PropertiesPanel() {
-    const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore() 
+    const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
     const objects = useSceneStore((state) => state.objects);
     const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
 
     const [tempColor, setTempColor] = useState<string | null>(null)
-    
+
     useEffect(() => {
         setTempColor(null);
     }, [selectedIds])
 
-    if (selectedIds.length === 0){
+    if (selectedIds.length === 0) {
         return (
             <div style={{
                 position: 'absolute',
@@ -64,14 +64,14 @@ export function PropertiesPanel() {
     const handleColorChange = (value: string) => {
         setTempColor(value);
         selectedObjects.forEach((obj) => {
-            updateObj(obj.id, {color: value}, true)
+            updateObj(obj.id, { color: value }, true)
         })
     }
 
     const handleColorFinalChange = (value: string) => {
         setTempColor(null);
         selectedObjects.forEach((obj) => {
-            updateObj(obj.id, {color: value}, false)
+            updateObj(obj.id, { color: value }, false)
         })
     }
 
@@ -80,7 +80,7 @@ export function PropertiesPanel() {
     }
 
     const inputStyle = {
-        width: '100%', padding: '6px 8px', background: "#14151f", 
+        width: '100%', padding: '6px 8px', background: "#14151f",
         border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12
     }
 
@@ -94,7 +94,7 @@ export function PropertiesPanel() {
             background: 'rgba(20, 21, 31, 0.95)', padding: 16, borderRadius: 8,
             border: '1px solid var(--border)', zIndex: 1000, display: 'flex', flexDirection: 'column',
             gap: 16, maxHeight: 'calc(100vh - 40px)', overflowY: 'auto'
-            }}>
+        }}>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 4 }}>
                 <h3 style={{ margin: 0, color: '#e4e4e7', fontSize: 16, fontWeight: 500 }}>
                     {isMultiObj ? `Выбрано объектов: ${selectedIds.length}` : 'Свойства объекта'}
@@ -131,8 +131,8 @@ export function PropertiesPanel() {
                 <div style={{ display: 'flex', gap: 8 }}>
                     {['X', 'Y', 'Z'].map((axis, i) => (
                         <div key={axis} style={{ flex: 1 }}>
-                            <input type="number" step="0.1" value={firstObj.rotation[i].toFixed(1)} onChange={(e) => handleRotationChange(i, parseFloat(e.target.value))} 
-                            style={inputStyle}/>
+                            <input type="number" step="0.1" value={firstObj.rotation[i].toFixed(1)} onChange={(e) => handleRotationChange(i, parseFloat(e.target.value))}
+                                style={inputStyle} />
                         </div>
                     ))}
                 </div>
@@ -147,7 +147,7 @@ export function PropertiesPanel() {
                     {['X', 'Y', 'Z'].map((axis, i) => (
                         <div key={axis} style={{ flex: 1 }}>
                             <input type="number" step="0.1" value={firstObj.scale[i].toFixed(1)} onChange={(e) => handleScaleChange(i, parseFloat(e.target.value))}
-                                style={inputStyle}/>
+                                style={inputStyle} />
                         </div>
                     ))}
                 </div>
@@ -160,14 +160,14 @@ export function PropertiesPanel() {
                 </label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
-                    style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }}/>
+                        style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
                     <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
-                        style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }}/>
+                        style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }} />
                 </div>
             </div>
 
-                        {/* ✅ Текстура */}
-                        <div>
+            {/* ✅ Текстура */}
+            <div>
                 <label style={labelStyle}>
                     Текстура {isMultiObj && '(применяется к первому объекту)'}
                 </label>
@@ -267,112 +267,143 @@ export function PropertiesPanel() {
                 </button>
             </div>
 
-            {/* прозрачность */}
-            <div>
-                <label style={labelStyle}>
-                    Прозрачность {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input type='range' min='0' max='1' step='0.01' value={firstObj.opacity} onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        selectedObjects.forEach((obj) => {
-                            updateObj(obj.id, {opacity: value})
-                        });
-                    }}
-                    style={{flex: 1, cursor: 'pointer'}}
-                    />
-                    <span style={{minWidth: 40, fontSize: 12, color: '#e4e4e7', textAlign: 'center'}}>
-                        {firstObj.opacity}
-                    </span>
-                </div>
-            </div>
-
-            {/* металлизированность */}
-            <div>
-                <label style={labelStyle}>
-                    Металлизированность {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input type='range' min='0' max='1' step='0.01' value={firstObj.metalness} onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        selectedObjects.forEach((obj) => {
-                            updateObj(obj.id, {metalness: value})
-                        });
-                    }}
-                    style={{flex: 1, cursor: 'pointer'}}
-                    />
-                    <span style={{minWidth: 40, fontSize: 12, color: '#e4e4e7', textAlign: 'center'}}>
-                        {firstObj.metalness}
-                    </span>
-                </div>
-            </div>
-
-            {/* шероховатость */}
-            <div>
-                <label style={labelStyle}>
-                    Шероховатость {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input type='range' min='0' max='1' step='0.01' value={firstObj.roughness} onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        selectedObjects.forEach((obj) => {
-                            updateObj(obj.id, {roughness: value})
-                        });
-                    }}
-                    style={{flex: 1, cursor: 'pointer'}}
-                    />
-                    <span style={{minWidth: 40, fontSize: 12, color: '#e4e4e7', textAlign: 'center'}}>
-                        {firstObj.roughness}
-                    </span>
-                </div>
-            </div>
-
-            {/* wireframe */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', background: '#14151f', borderRadius: 4, border: '1px solid #2e303a'}}>
-                <span style={{color: 'white', fontSize: 13, fontWeight: 200}}>
-                    Режим сетки (Wireframe)
-                </span>
-                <label style={{
-                    position: 'relative',
-                    display: 'inline-block',
-                    width: 40,
-                    height: 22,
-                    cursor: 'pointer'
-                }}>
-                    <input
-                        type="checkbox"
-                        checked={firstObj.wireframe}
-                        onChange={(e) => {
-                            const value = e.target.checked;
+            {firstObj.type === 'text' && (
+                <>
+                    <div>
+                        <label style={labelStyle}>Содержимое текста (Enter для новой строки)</label>
+                        <textarea value={firstObj.text || ''} onChange={(e) => {
+                            const val = e.target.value;
                             selectedObjects.forEach((obj) => {
-                                updateObj(obj.id, { wireframe: value });
+                                if (obj.type === 'text') { updateObj(obj.id, { text: val }) };
+                            });
+                        }} rows={4} style={inputStyle} placeholder="Введите текст...&#10;Enter = новая строка"/>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Размер шрифта</label>
+                        <input type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            selectedObjects.forEach((obj) => {
+                                if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
                             });
                         }}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                    />
-                    <span style={{
-                        position: 'absolute',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: firstObj.wireframe ? '#aa3bff' : '#2e303a',
-                        borderRadius: 22,
-                        transition: 'background-color 0.3s'
-                    }}></span>
-                    <span style={{
-                        position: 'absolute',
-                        height: 16,
-                        width: 16,
-                        left: firstObj.wireframe ? 21 : 3,
-                        bottom: 3,
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: 'left 0.3s'
-                    }}></span>
-                </label>
-            </div>
+                            style={{ flex: 1, cursor: 'pointer' }}
+                        />
+                    </div>
+                </>
+            )}
+
+            {firstObj.type !== 'text' && (
+                <>
+
+                    {/* прозрачность */}
+                    <div>
+                        <label style={labelStyle}>
+                            Прозрачность {isMultiObj && '(применяется ко всем)'}
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input type='range' min='0' max='1' step='0.01' value={firstObj.opacity} onChange={(e) => {
+                                const value = parseFloat(e.target.value);
+                                selectedObjects.forEach((obj) => {
+                                    updateObj(obj.id, { opacity: value })
+                                });
+                            }}
+                                style={{ flex: 1, cursor: 'pointer' }}
+                            />
+                            <span style={{ minWidth: 40, fontSize: 12, color: '#e4e4e7', textAlign: 'center' }}>
+                                {firstObj.opacity}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* металлизированность */}
+                    <div>
+                        <label style={labelStyle}>
+                            Металлизированность {isMultiObj && '(применяется ко всем)'}
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input type='range' min='0' max='1' step='0.01' value={firstObj.metalness} onChange={(e) => {
+                                const value = parseFloat(e.target.value);
+                                selectedObjects.forEach((obj) => {
+                                    updateObj(obj.id, { metalness: value })
+                                });
+                            }}
+                                style={{ flex: 1, cursor: 'pointer' }}
+                            />
+                            <span style={{ minWidth: 40, fontSize: 12, color: '#e4e4e7', textAlign: 'center' }}>
+                                {firstObj.metalness}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* шероховатость */}
+                    <div>
+                        <label style={labelStyle}>
+                            Шероховатость {isMultiObj && '(применяется ко всем)'}
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input type='range' min='0' max='1' step='0.01' value={firstObj.roughness} onChange={(e) => {
+                                const value = parseFloat(e.target.value);
+                                selectedObjects.forEach((obj) => {
+                                    updateObj(obj.id, { roughness: value })
+                                });
+                            }}
+                                style={{ flex: 1, cursor: 'pointer' }}
+                            />
+                            <span style={{ minWidth: 40, fontSize: 12, color: '#e4e4e7', textAlign: 'center' }}>
+                                {firstObj.roughness}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* wireframe */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', background: '#14151f', borderRadius: 4, border: '1px solid #2e303a' }}>
+                        <span style={{ color: 'white', fontSize: 13, fontWeight: 200 }}>
+                            Режим сетки (Wireframe)
+                        </span>
+                        <label style={{
+                            position: 'relative',
+                            display: 'inline-block',
+                            width: 40,
+                            height: 22,
+                            cursor: 'pointer'
+                        }}>
+                            <input
+                                type="checkbox"
+                                checked={firstObj.wireframe}
+                                onChange={(e) => {
+                                    const value = e.target.checked;
+                                    selectedObjects.forEach((obj) => {
+                                        updateObj(obj.id, { wireframe: value });
+                                    });
+                                }}
+                                style={{ opacity: 0, width: 0, height: 0 }}
+                            />
+                            <span style={{
+                                position: 'absolute',
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: firstObj.wireframe ? '#aa3bff' : '#2e303a',
+                                borderRadius: 22,
+                                transition: 'background-color 0.3s'
+                            }}></span>
+                            <span style={{
+                                position: 'absolute',
+                                height: 16,
+                                width: 16,
+                                left: firstObj.wireframe ? 21 : 3,
+                                bottom: 3,
+                                backgroundColor: 'white',
+                                borderRadius: '50%',
+                                transition: 'left 0.3s'
+                            }}></span>
+                        </label>
+                    </div>
+                </>
+                )
+            }
 
             {/* Кнопка удаления */}
-            <button onClick={deleteAll}  
-            style={{ padding: '10px 16px', background: '#FF5F56', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14, fontWeight: 500, marginTop: 8 }}>
+            <button onClick={deleteAll}
+                style={{ padding: '10px 16px', background: '#FF5F56', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14, fontWeight: 500, marginTop: 8 }}>
                 🗑️ Удалить выделенные (del) ({selectedIds.length})
             </button>
             <button

@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
 
-type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid';
+type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
 
 const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
     { value: 'box', name: '🔲 Куб' },
@@ -10,7 +10,8 @@ const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
     { value: 'cylinder', name: '💈 Цилиндр'},
     { value: 'cone', name: '🎉 Конус'},
     { value: 'tor', name: '⭕ Тор'},
-    { value: 'pyramid', name: '🔺 Пирамида'}
+    { value: 'pyramid', name: '🔺 Пирамида'},
+    { value: 'text', name: '🔤 Текст'}
 ]
 
 export function ToolBar(){

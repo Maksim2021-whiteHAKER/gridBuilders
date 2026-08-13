@@ -4,7 +4,7 @@ import { version } from "../../package.json"
 
 export interface SceneObject {
     id: string,
-    type: 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid',
+    type: 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text',
     position: [number, number, number],
     rotation: [number, number, number],
     scale: [number, number, number],
@@ -14,6 +14,10 @@ export interface SceneObject {
     roughness: number,
     wireframe: boolean,
     textureUrl?: string,
+    text?: string,
+    fontSize?: number,
+    maxWidth?: number,
+    textAllign?: 'left' | 'center' | 'right'
 }
 
 type TransformMode = 'translate' | 'rotate' | 'scale'
@@ -112,6 +116,10 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 roughness: 0.5,
                 wireframe: false,
                 textureUrl: undefined,
+                text: obj.type === 'text' ? (obj.text || "Текст") : undefined,
+                fontSize: obj.type === 'text' ? (obj.fontSize || 0.5) : undefined,
+                maxWidth: obj.type === 'text' ? 12 : undefined,
+                textAllign: obj.type === 'text' ? 'center' : undefined
             }],
             selectedIds: [obj.id]
         })

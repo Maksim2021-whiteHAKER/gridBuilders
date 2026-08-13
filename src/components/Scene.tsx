@@ -1,7 +1,7 @@
 // /src/components/Scene.tsx
 import { useEffect, useState } from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
-import { OrbitControls, Grid, Line, TransformControls, Outlines } from '@react-three/drei'
+import { OrbitControls, Grid, Line, TransformControls, Outlines, Text as Text3D } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
 import { GroupTransformControls } from './GroupTransformControls.tsx'
@@ -11,6 +11,22 @@ import { MarqueeSelection } from './MarqueeSelection.tsx'
 
 function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
     const texture = obj.textureUrl ? useLoader(THREE.TextureLoader, obj.textureUrl) as THREE.Texture : undefined;    
+
+    if (obj.type === 'text') {
+        return (
+            <Text3D ref={setMesh as any} position={obj.position} rotation={obj.rotation} scale={obj.scale} 
+            fontSize={obj.fontSize || 0.5} color={obj.color} anchorX="center" anchorY="middle" 
+            onClick={(e) => {
+                e.stopPropagation()
+                const isctrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
+                const store = useSceneStore.getState();
+                if (isctrlOrCmd) store.addToSelection(obj.id);
+                else store.selectObject(obj.id)
+            }}> {obj.text || 'Текст'}
+            </Text3D>
+        )
+    }
+
     return(
         <mesh ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
             onClick={(e) => {
