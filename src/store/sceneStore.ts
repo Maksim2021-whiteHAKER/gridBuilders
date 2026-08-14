@@ -1,6 +1,7 @@
 // /src/store/sceneStore.ts
 import { create } from "zustand";
 import { version } from "../../package.json"
+import { exportToRoblox } from "../utils/exportToRBXM";
 
 export interface SceneObject {
     id: string,
@@ -54,6 +55,7 @@ interface SceneStore extends SceneState {
     saveToLocalStorage: () => void,
     loadFromLocalStorage: () => void,
     exportJSON: () => void,
+    exportRBXM: () => void,
     importJSON: (jsonString: string) => boolean,
         
     // Undo/Redo
@@ -282,6 +284,11 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url)
+    },
+
+    exportRBXM: () => {
+        const state = get();
+        exportToRoblox(state.objects);
     },
 
     importJSON: (jsonString: string) => {

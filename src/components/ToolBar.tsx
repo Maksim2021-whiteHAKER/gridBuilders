@@ -18,6 +18,7 @@ export function ToolBar(){
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
     const exportToJSON = useSceneStore((state) => state.exportJSON);
+    const exportToRBXM = useSceneStore((state) => state.exportRBXM);
     const importToJSON = useSceneStore((state) => state.importJSON);
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
@@ -249,13 +250,20 @@ export function ToolBar(){
             )}
             <div style={{marginTop: 8, paddingTop: 4, alignItems: 'center', border: '1px solid #2e303a', display: 'flex', flexDirection: 'column', gap: 6}}>
                 <label style={{color: 'white', fontSize: 12, fontWeight: 200}}>Сохранение сцены / загрузка из ...</label>
-                <div style={{display: 'flex', gap: 4}}>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 4}}>
                     <button onClick={exportToJSON}
-                    style={{ flex: 1, padding: '6px 8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Скачать сцену из JSON'>
+                    style={{ gridRow: '1', gridColumn: '1', padding: '8px', background: '#14151f',
+                     color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', 
+                     fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, 
+                     transition: 'all 0.2s'}} title='Скачать сцену из JSON'>
                         Скачать (JSON)
                     </button>
+                    <button onClick={exportToRBXM} 
+                    style={{ gridRow: '2', gridColumn: '1', flexDirection: 'column', padding: '6px 8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Скачать сцену из RBXM'>
+                        Скачать (RBXMX)
+                    </button>
                     <button onClick={handleImport}
-                    style={{ flex: 1, padding: '6px 8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Выгрузить сцену из JSON'>
+                    style={{ gridRow: '1 / span 2', gridColumn: '2', padding: '6px 8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Выгрузить сцену из JSON'>
                         Загрузить из ...
                     </button>
                 </div>
