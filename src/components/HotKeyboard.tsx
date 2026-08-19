@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 import { useThree } from "@react-three/fiber";
 import * as THREE from 'three'
+import { useIsMobile } from "../hooks/useIsMobile";
 
 export function calculateCenter(selectedIds: string[], objects: any[]) {
     const selectedObjects = objects.filter((obj) => selectedIds.includes(obj.id));
@@ -108,5 +109,28 @@ export function KeyboardShortcuts() {
         };
     }, [selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll, objects, controls]);
 
+    return null;
+}
+
+export function CameraFocusAuto() {
+    const controls = useThree((state) => state.controls) as any;
+    const { selectedIds, objects } = useSceneStore();
+    const isMobile = useIsMobile(768);
+
+    useEffect(() => {
+        if (isMobile && selectedIds.length > 0 && objects.length > 0) {
+            const timeoutId = setTimeout(() => {
+                const center = calculateCenter(selectedIds, objects);
+                 if (center) {
+                    controls.target.set(center.x, center.y + 2, center.z)
+                    controls.update()
+                 } else {
+                    console.warn('[AutoFocus] Не удалось сфокусироваться: center или controls отсутствуют');
+                }
+            }, 200); // Увеличил задержку до 200мс для надёжности
+            
+            return () => clearTimeout(timeoutId);
+        }
+    }, [selectedIds, controls, isMobile, objects]);
     return null;
 }

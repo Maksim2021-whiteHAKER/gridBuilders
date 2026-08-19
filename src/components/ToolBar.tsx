@@ -1,17 +1,18 @@
 // /src/components/ToolBar.tsx
 import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
+import { useIsMobile } from '../hooks/useIsMobile';
 
 type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
 
-const OBJECT_TYPES: {value: ObjectType, name: string}[] = [
-    { value: 'box', name: '🔲 Куб' },
-    { value: 'sphere', name: '🔘 Шар'},
-    { value: 'cylinder', name: '💈 Цилиндр'},
-    { value: 'cone', name: '🎉 Конус'},
-    { value: 'tor', name: '⭕ Тор'},
-    { value: 'pyramid', name: '🔺 Пирамида'},
-    { value: 'text', name: '🔤 Текст'}
+const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
+    { value: 'box', name: 'Куб', icon: '🔲' },
+    { value: 'sphere', name: 'Шар', icon: '🔘'},
+    { value: 'cylinder', name: 'Цилиндр', icon: '💈'},
+    { value: 'cone', name: 'Конус', icon: '🎉'},
+    { value: 'tor', name: 'Тор', icon: '⭕'},
+    { value: 'pyramid', name: 'Пирамида', icon: '🔺'},
+    { value: 'text', name: 'Текст', icon: '🔤'}
 ]
 
 export function ToolBar(){
@@ -21,6 +22,9 @@ export function ToolBar(){
     const exportToRBXM = useSceneStore((state) => state.exportRBXM);
     const importToJSON = useSceneStore((state) => state.importJSON);
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
+
+    const isMobile = useIsMobile(768);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const handleAddObject = () => {
         addObject({
@@ -58,6 +62,110 @@ export function ToolBar(){
             }
         };
         input.click();
+    }
+
+    if (isMobile) {
+        return (
+            <>
+                <div style={{
+                    position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(20, 21, 31, 0.98)',
+                    borderTop: '1px solid #2e303a', padding: '8px 12px', zIndex: 1000, display: 'flex', flexDirection: 'column',
+                    gap: 8
+                }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
+                            style={{
+                                flex: 1, padding: '12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
+                                borderRadius: 8, fontSize: 14, minHeight: 44
+                            }}>
+                            {OBJECT_TYPES.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                    {type.icon} {type.name}
+                                </option>
+                            ))}
+                        </select>
+                        <button onClick={handleAddObject}
+                            style={{
+                                padding: '12px 20px', background: '#aa3bff', color: 'white', border: 'none',
+                                borderRadius: 8, fontSize: 14, fontWeight: 600, minHeight: 44, whiteSpace: 'nowrap'
+                            }}>Добавить
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+                            {(['translate', 'rotate', 'scale'] as const).map((mode) => (
+                                <button key={mode} onClick={() => setTransformMode(mode)}
+                                    style={{
+                                        flex: 1, padding: '10px 4px', background: transformMode === mode ? '#aa3bff' : '#14151f',
+                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 12, minHeight: 40
+                                    }}>
+                                    {mode === 'translate' ? '↕️' : mode === 'rotate' ? '🔄' : '⤢'}
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={exportToJSON}
+                            style={{
+                                padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
+                                borderRadius: 6, fontSize: 12, minHeight: 40
+                            }}>
+                            💾JSON
+                        </button>
+                        <button onClick={exportToRBXM}
+                            style={{
+                                padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
+                                borderRadius: 6, fontSize: 12, minHeight: 40
+                            }}>
+                            🧱RBXMX
+                        </button>
+                        <button onClick={handleImport}
+                            style={{
+                                padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
+                                borderRadius: 6, fontSize: 12, minHeight: 40
+                            }}>
+                            📂Импорт
+                        </button>
+                    </div>
+                </div>
+                <button onClick={() => setIsExpanded(!isExpanded)}
+                    style={{
+                        position: 'fixed', bottom: 120, right: 12, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
+                        border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
+                        zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                    {isExpanded ? '❌' : '⚙'}
+                </button>
+                {isExpanded && (
+                    <div
+                        style={{
+                            position: 'fixed', bottom: 200, right: 16, width: 200, background: 'rgba(20, 21, 31, 0.98)',
+                            border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
+                            zIndex: 1001, display: 'flex', flexDirection: 'column', gap: 8
+                        }}>
+                        <button onClick={undo} disabled={!canUndo()}
+                            style={{
+                                padding: '10px', background: canUndo() ? '#14151f' : '#0a0b15', color: canUndo() ? 'white' : '#6d7280',
+                                border: '1px solid #2e303a', borderRadius: 6, fontSize: 13, minHeight: 44
+                            }}>
+                            ↶ Отмена
+                        </button>
+                        <button onClick={redo} disabled={!canRedo()}
+                            style={{
+                                padding: '10px', background: canRedo() ? '#14151f' : '#0a0b15', color: canRedo() ? 'white' : '#6d7280',
+                                border: '1px solid #2e303a', borderRadius: 6, fontSize: 13, minHeight: 44
+                            }}>
+                            ↷ Вернуть
+                        </button>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px',
+                            background: '#14151f', borderRadius: 6
+                        }}>
+                            <span style={{ color: 'white', fontSize: 13 }}>Привязь к сетке</span>
+                            <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{ width: 20, height: 20 }} />
+                        </div>
+                    </div>
+                )}
+            </>
+        );
     }
 
     return (

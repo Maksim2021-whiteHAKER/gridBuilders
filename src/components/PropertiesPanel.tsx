@@ -1,41 +1,68 @@
 // /scr/componetns/PropertiesPanel.tsx
 import { useEffect, useState } from 'react';
 import { useSceneStore } from '../store/sceneStore'
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export function PropertiesPanel() {
     const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
     const objects = useSceneStore((state) => state.objects);
     const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
+    const isMobile = useIsMobile(768);
 
     const [tempColor, setTempColor] = useState<string | null>(null)
-
+   
     useEffect(() => {
         setTempColor(null);
-    }, [selectedIds])
+    }, [selectedIds])         
 
     if (selectedIds.length === 0) {
-        return (
-            <div style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                width: 280,
-                background: 'rgba(20, 21, 31, 0.95)',
-                padding: 16,
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                zIndex: 1000,
-                color: '#9ca3af',
-                textAlign: 'center'
-            }}>
-                Нет выделенного объекта
-            </div>
-        )
+        if (isMobile) {
+            return null
+        } else {
+            return (
+                <div style={{
+                    position: 'absolute',
+                    top: 20,
+                    right: 20,
+                    width: 280,
+                    background: 'rgba(20, 21, 31, 0.95)',
+                    padding: 16,
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    zIndex: 1000,
+                    color: '#9ca3af',
+                    textAlign: 'center'
+                }}>
+                    Нет выделенного объекта
+                </div>
+            )
+        }
     }
 
     const isMultiObj = selectedIds.length > 1;
     const firstObj = selectedObjects[0];
     const displayColor = tempColor || firstObj.color;
+
+    const openChoosingFiles = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const textureUrl = event.target?.result as string;
+                    // Применяем ко всем выделенным объектам
+                    selectedObjects.forEach((obj) => {
+                        updateObj(obj.id, { textureUrl });
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
+    }
 
     const handlePositionChange = (index: number, value: number) => {
         selectedObjects.forEach((obj) => {
@@ -79,6 +106,41 @@ export function PropertiesPanel() {
         selectedIds.forEach((id) => deleteObj(id))
     }
 
+    const changeMaterialProp = (prop: 'opacity' | 'metalness' | 'roughness', delta: number, positive: boolean) => {
+        const current = firstObj[prop];
+        let newValue;
+        positive === true ? newValue = Math.max(0, Math.min(1, current + delta)) : newValue = Math.min(1, Math.max(0, current - delta));
+        selectedObjects.forEach((obj) => updateObj(obj.id, {[prop]: newValue}));      
+    }
+
+    const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
+        <div
+            style={{
+                width: 40,
+                height: 22,
+                background: checked ? '#aa3bff' : '#2e303a',
+                borderRadius: 22,
+                display: 'flex',
+                alignItems: 'center',
+                padding: 2,
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+            }}
+            onClick={() => onChange(!checked)}
+        >
+            <div
+                style={{
+                    width: 16,
+                    height: 16,
+                    background: 'white',
+                    borderRadius: '50%',
+                    marginLeft: checked ? 18 : 2,
+                    transition: 'margin-left 0.2s'
+                }}
+            />
+        </div>
+    );
+
     const inputStyle = {
         width: '100%', padding: '6px 8px', background: "#14151f",
         border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12
@@ -86,6 +148,257 @@ export function PropertiesPanel() {
 
     const labelStyle = {
         display: 'block', color: '#9ca3af', fontSize: 12, fontWeight: 500, marginBottom: 8
+    }
+
+    const inputStyleMobile = {
+        width: '100%', padding: '10px', background: "#0a0b15",
+        border: '1px solid #2e303a', borderRadius: 8, color: '#e4e4e7', fontSize: 14
+    }
+
+    const labelStyleMobile = {
+        display: 'block', color: '#9ca3af', fontSize: 12, fontWeight: 600, marginBottom: 8
+    }
+
+    const btnMobileStyle = {
+        width: "24px", height: "24px", border: "none", borderRadius: 8, color: "white", 
+        fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: "center", 
+        justifyContent: "center", fontWeight: "bold", padding: 0, lineHeight: 1
+    }
+
+    const controlsContainerMobileStyle = {
+        display: 'inline-flex', gap: "8px", alignItems: 'center'
+    }
+
+    const gradientShadowStyle = {
+        top: 0, bottom: 0, width: 30, 
+        zIndex: 10, 
+    }
+
+    const arrowIndicator = {
+        top: "90%", transform: "translateY(-50%)", 
+        color: "#ff8877", fontSize: 40, zIndex: 1000, 
+    }
+
+    if (isMobile) {
+        return (
+            <div style={{
+                position: 'fixed',
+                top: 0, left: 0, right: 0,
+                background: 'rgba(20, 21, 31, 0.98)',
+                borderBottom: '1px solid #2e303a',
+                zIndex: 1000,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+            }}>
+                <div style={{position: "absolute", left: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>⬅</div>
+                <div style={{position: "absolute", right: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>➡</div>
+                {/* Заголовок с кнопкой закрытия */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', padding: '0px 15px', 
+                    borderBottom: '1px solid #2e303a', borderRadius: '25%'
+                }}>
+                    <span style={{ flex: 1, textAlign: 'center', color: '#e4e4e7', fontSize: 20, fontWeight: 600, }}>
+                        {isMultiObj ? `выделено объектов [${selectedIds.length}]` : firstObj.type}
+                    </span>
+                    <button 
+                        onClick={clearSelection}
+                        style={{ background: 'transparent', border: 'none', color: '#9ca3af', 
+                        fontSize: 22, cursor: 'pointer', padding: 4 }}
+                    >✕
+                    </button>
+                </div>
+
+                {/* Горизонтальный скролл-контейнер */}
+                <div style={{
+                    position: "relative",
+                    display: 'flex',
+                    maxHeight: '130px',
+                    overflowX: 'auto',
+                    gap: 12,
+                    padding: '12px 16px 20px 16px',
+                    scrollSnapType: 'x mandatory',
+                    WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
+                    scrollbarWidth: 'none',
+                    borderRadius: '15%',
+                }}>
+
+                    <div style={{position: "absolute", left: 0, ...gradientShadowStyle, background: "linear-gradient(to right, (20, 21, 31, 0.98), transparent)", borderRadius: "30% 0 0 30%"}}></div>
+                    <div style={{position: "absolute", right: 0, ...gradientShadowStyle, background: "linear-gradient(to left, (20, 21, 31, 0.98), transparent)", borderRadius: "0 15% 15% 0"}}></div>
+
+                    <style>{`&::-webkit-scrollbar { display: none}`}</style>
+                    <style>{`@keyframes pulse { 0, 100% {opacity: 0.3} 
+                    50% {opacity: 0.6}}`}</style>
+                    
+                    
+                    {/* Карточка: Позиция */}
+                    <div style={{
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start'
+                    }}>
+                        <label style={labelStyleMobile}>Позиция
+                            <span style={{marginLeft: '30px', color: "rgb(255, 0, 0)"}}>X</span>
+                            <span style={{marginLeft: '30px', color: "rgb(0, 255, 0)"}}>Y</span>
+                            <span style={{marginLeft: '30px', color: "rgb(0, 235, 255)"}}>Z</span>
+                            </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {['X', 'Y', 'Z'].map((axis, i) => (
+                                <div key={axis} style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: 11, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}></label>
+                                    <input type="text" step="0.1" value={firstObj.position[i].toFixed(1)} onChange={(e) => handlePositionChange(i, parseFloat(e.target.value))} style={inputStyleMobile} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Карточка: Вращение */}
+                    <div style={{
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start'
+                    }}>
+                        <label style={labelStyleMobile}>Вращение                            
+                            <span style={{marginLeft: '30px', color: "rgb(255, 0, 0)"}}>X</span>
+                            <span style={{marginLeft: '30px', color: "rgb(0, 255, 0)"}}>Y</span>
+                            <span style={{marginLeft: '30px', color: "rgb(0, 235, 255)"}}>Z</span>
+                        </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {['X', 'Y', 'Z'].map((axis, i) => (
+                                <div key={axis} style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: 11, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}></label>
+                                    <input type="text" step="0.1" value={firstObj.rotation[i].toFixed(1)} onChange={(e) => handleRotationChange(i, parseFloat(e.target.value))} style={inputStyleMobile} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Карточка: Масштаб */}
+                    <div style={{
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start'
+                    }}>
+                        <label style={labelStyleMobile}>Масштаб
+                            <span style={{marginLeft: '30px', color: "rgb(255, 0, 0)"}}>X</span>
+                            <span style={{marginLeft: '30px', color: "rgb(0, 255, 0)"}}>Y</span>
+                            <span style={{marginLeft: '30px', color: "rgb(0, 235, 255)"}}>Z</span>
+                        </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {['X', 'Y', 'Z'].map((axis, i) => (
+                                <div key={axis} style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: 11, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}></label>
+                                    <input type="text" step="0.1" value={firstObj.scale[i].toFixed(1)} onChange={(e) => handleScaleChange(i, parseFloat(e.target.value))} style={inputStyleMobile} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Карточка: Цвет и Материалы */}
+                    <div style={{
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
+                    }}>
+                        <div>
+                            <span style={labelStyleMobile}>Цвет
+                                <span style={{ marginLeft: "10px", gap: 8}}>
+                                    <input type="color" value={displayColor} 
+                                    onChange={(e) => handleColorChange(e.target.value)}
+                                    onMouseUp={() => handleColorFinalChange(displayColor)} 
+                                    style={{width: "30px", height: "30px", border: "none", borderRadius: 8, cursor: "pointer", background: "transparent"}}/>
+                                    <input type="text" value={displayColor}
+                                    onChange={(e) => handleColorChange(e.target.value)}
+                                    onMouseUp={() => handleColorFinalChange(displayColor)}
+                                    style={{position: "relative", marginLeft: "5px", width: "45%", fontSize: "17px", borderRadius: "15px", 
+                                    background: "#0a0b15", border: "1px solid #2e303a", color: "#e4e4e7" }}/>
+                                </span>
+                            </span>
+                            <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                <span style={{...labelStyleMobile, position: "relative"}}>Текстура</span>
+                                <img src={firstObj.textureUrl}
+                                    alt="нет"
+                                    style={{ width: "17%", height: "17%", objectFit: "cover", display: "block" }} 
+                                />
+                                <button onClick={() => openChoosingFiles()}
+                                style={{ width: "100%", padding: "4px", background: "#8007bd", color: "#ffffff",
+                                    borderRadius: "30px", fontSize: "11px"
+                                }}>
+                                    {firstObj.textureUrl ? '🔄Замена текстуры' : '📁Загрузка текстуры'}                                    
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {firstObj.type !== 'text' && (
+                        <div style={{
+                            minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                            border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
+                        }}>
+                            <>
+                                <div>
+                                    <span style={{...labelStyleMobile, fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Прозрачность: {firstObj.opacity.toFixed(2)}
+                                    <span style={{marginLeft: '18px', ...controlsContainerMobileStyle, justifyContent: 'space-between'}}>
+                                        <button onClick={() => changeMaterialProp('opacity', 0.05, true)} 
+                                        style={{ ...btnMobileStyle, background: "#00ff56"}}>➕</button>
+                                        <button onClick={() => changeMaterialProp('opacity', 0.05, false)} 
+                                        style={{ ...btnMobileStyle, background: "#ff0022"}}>➖</button>
+                                    </span>
+                                    </span>                                
+                                    <span style={{...labelStyleMobile, fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Металличность: {firstObj.metalness.toFixed(2)}
+                                    <span style={{marginLeft: "9px", ...controlsContainerMobileStyle}}>
+                                    <button onClick={() => changeMaterialProp('metalness', 0.05, true)} 
+                                        style={{ ...btnMobileStyle, background: "#00ff56"}}>➕</button>
+                                        <button onClick={() => changeMaterialProp('metalness', 0.05, false)} 
+                                        style={{ ...btnMobileStyle, background: "#ff0022"}}>➖</button>
+                                    </span>
+                                    </span>
+                                </div>
+                            </>
+                        </div>                       
+                    )}
+
+                    {firstObj.type !== 'text' && (
+                        <div style={{
+                            minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                            border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
+                        }}>
+                            <>
+                                <div>
+                                    <span style={{...labelStyleMobile, fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Шероховатость: {firstObj.roughness.toFixed(2)}
+                                    <span style={{marginLeft: '18px', ...controlsContainerMobileStyle}}>
+                                    <button onClick={() => changeMaterialProp('roughness', 0.05, true)} 
+                                        style={{ ...btnMobileStyle, background: "#00ff56"}}>➕</button>
+                                        <button onClick={() => changeMaterialProp('roughness', 0.05, false)} 
+                                        style={{ ...btnMobileStyle, background: "#ff0022"}}>➖</button>
+                                    </span>
+                                    </span>                                
+                                    <label style={{...labelStyleMobile, fontSize: "20px", display: "flex", justifyContent: "space-between"}}>Каркас: 
+                                    <span style={{marginLeft: "15px", ...controlsContainerMobileStyle}}>
+                                        <Toggle checked={firstObj.wireframe} onChange={(value) => {
+                                            selectedObjects.forEach((obj) => updateObj(obj.id, {wireframe: value}))
+                                        }}
+                                        />
+                                    </span>
+                                    </label>
+                                </div>
+                            </>
+                        </div>  
+                    )}           
+                </div>
+                {/* Карточка: Текстура (если есть) или Действия */}
+                <button onClick={deleteAll}
+                    style={{
+                        position: 'absolute', bottom: -40, right: 20,
+                        padding: '4px', background: '#FF5F56', color: 'white', border: 'none',
+                        borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer'
+                    }}>
+                    🗑️ Удалить ({selectedIds.length})
+                </button>
+
+                <button onClick={clearSelection}
+                    style={{
+                        position: 'absolute', bottom: -80, right: 20, padding: '4px', background: 'transparent', color: '#ffbbaa',
+                        border: '1px solid #2e303a', backgroundColor: "rgb(50,90,255)", borderRadius: 8, fontSize: 14, cursor: 'pointer'
+                    }}>
+                    Снять выделение
+                </button>
+            </div>
+        );
     }
 
     return (
@@ -224,24 +537,7 @@ export function PropertiesPanel() {
                 {/* Кнопка загрузки */}
                 <button
                     onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                    const textureUrl = event.target?.result as string;
-                                    // Применяем ко всем выделенным объектам
-                                    selectedObjects.forEach((obj) => {
-                                        updateObj(obj.id, { textureUrl });
-                                    });
-                                };
-                                reader.readAsDataURL(file);
-                            }
-                        };
-                        input.click();
+                        openChoosingFiles()                        
                     }}
                     style={{
                         width: '100%',
@@ -294,7 +590,6 @@ export function PropertiesPanel() {
 
             {firstObj.type !== 'text' && (
                 <>
-
                     {/* прозрачность */}
                     <div>
                         <label style={labelStyle}>
@@ -367,35 +662,10 @@ export function PropertiesPanel() {
                             height: 22,
                             cursor: 'pointer'
                         }}>
-                            <input
-                                type="checkbox"
-                                checked={firstObj.wireframe}
-                                onChange={(e) => {
-                                    const value = e.target.checked;
-                                    selectedObjects.forEach((obj) => {
-                                        updateObj(obj.id, { wireframe: value });
-                                    });
-                                }}
-                                style={{ opacity: 0, width: 0, height: 0 }}
-                            />
-                            <span style={{
-                                position: 'absolute',
-                                top: 0, left: 0, right: 0, bottom: 0,
-                                backgroundColor: firstObj.wireframe ? '#aa3bff' : '#2e303a',
-                                borderRadius: 22,
-                                transition: 'background-color 0.3s'
-                            }}></span>
-                            <span style={{
-                                position: 'absolute',
-                                height: 16,
-                                width: 16,
-                                left: firstObj.wireframe ? 21 : 3,
-                                bottom: 3,
-                                backgroundColor: 'white',
-                                borderRadius: '50%',
-                                transition: 'left 0.3s'
-                            }}></span>
-                        </label>
+                            <Toggle checked={firstObj.wireframe} onChange={(value) => {
+                                selectedObjects.forEach((obj) => updateObj(obj.id, { wireframe: value }))
+                            }}/>                        
+                            </label>
                     </div>
                 </>
                 )

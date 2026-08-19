@@ -6,7 +6,7 @@ import { COLORS } from '../constants/color.ts'
 import { useSceneStore } from '../store/sceneStore.ts'
 import { GroupTransformControls } from './GroupTransformControls.tsx'
 import * as THREE from 'three'
-import { KeyboardShortcuts } from './HotKeyboard.tsx'
+import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 
 function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
@@ -230,6 +230,7 @@ export function Scene_GB(){
                 <OrbitControls makeDefault/>
                 <KeyboardShortcuts />
                 <MarqueeSelection onMarqueeChange={setMarquee} onSelectionComplete={handleSelectionComplete} />
+                <CameraFocusAuto />
             </Canvas>
         </div>
     )
