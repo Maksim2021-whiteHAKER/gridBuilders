@@ -317,9 +317,14 @@ export function PropertiesPanel() {
                                 <button onClick={() => openChoosingFiles()}
                                 style={{ width: "100%", padding: "4px", background: "#8007bd", color: "#ffffff",
                                     borderRadius: "30px", fontSize: "11px"
-                                }}>
-                                    {firstObj.textureUrl ? '🔄Замена текстуры' : '📁Загрузка текстуры'}                                    
+                                }}>{firstObj.textureUrl ? '🔄Замена текстуры' : '📁Загрузка текстуры'}                                    
                                 </button>
+                                <button onClick={() => selectedObjects.forEach((obj) => {
+                                    updateObj(obj.id, { textureUrl: undefined });
+                                })} style={{position: "absolute", top: 62, right: -118, height: "15px",
+                                    color: "#ffffff", fontSize: 15, fontWeight: 1000, 
+                                    background: "rgba(0, 0, 0, 0.75)", borderRadius: "75%"
+                                 }}>{firstObj.textureUrl ? "×" : ""}</button>
                             </div>
                         </div>
                     </div>
@@ -516,7 +521,7 @@ export function PropertiesPanel() {
                                 right: 4,
                                 background: 'rgba(255, 95, 86, 0.9)',
                                 border: 'none',
-                                borderRadius: 4,
+                                borderRadius: "100%",
                                 color: 'white',
                                 width: 24,
                                 height: 24,
@@ -528,9 +533,7 @@ export function PropertiesPanel() {
                                 justifyContent: 'center'
                             }}
                             title="Удалить текстуру"
-                        >
-                            ×
-                        </button>
+                        >×</button>
                     </div>
                 )}
 
@@ -540,15 +543,9 @@ export function PropertiesPanel() {
                         openChoosingFiles()                        
                     }}
                     style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        background: '#14151f',
-                        color: '#e4e4e7',
-                        border: '1px dashed #2e303a',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: 12,
-                        transition: 'all 0.2s'
+                        width: '100%', padding: '8px 12px', background: '#14151f',
+                        color: '#e4e4e7', border: '1px dashed #2e303a', borderRadius: 4,
+                        cursor: 'pointer', fontSize: 12, transition: 'all 0.2s'
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.borderColor = '#aa3bff';
