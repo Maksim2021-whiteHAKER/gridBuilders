@@ -15,7 +15,7 @@ const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
     { value: 'text', name: 'Текст', icon: '🔤'}
 ]
 
-export function ToolBar(){
+export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void, user: any, onSignOut: () => void}){
     const camera = useSceneStore((state) => state.camera);
     const controls = useSceneStore((state) => state.controls);
     
@@ -141,7 +141,7 @@ export function ToolBar(){
                 </div>
                 <button onClick={() => setIsExpanded(!isExpanded)}
                     style={{
-                        position: 'fixed', bottom: 120, right: 12, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
+                        position: 'fixed', bottom: 85, right: 12, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
                         border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
                         zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
@@ -150,7 +150,7 @@ export function ToolBar(){
                 </button>
                 {isExpanded && (
                     <div style={{
-                        position: 'fixed', bottom: 180, right: 16, width: 200, background: 'rgba(20, 21, 31, 0.98)',
+                        position: 'fixed', bottom: 85, right: 68, width: 200, background: 'rgba(20, 21, 31, 0.98)',
                         border: '1px solid #2e303a', borderRadius: 12, padding: 12,
                         zIndex: 1001, display: 'flex', flexDirection: 'column', gap: 8,
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
@@ -186,6 +186,7 @@ export function ToolBar(){
                             <span style={{ color: 'white', fontSize: 13 }}>Привязка к сетке</span>
                             <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{ width: 20, height: 20, accentColor: '#aa3bff' }} />
                         </div>
+                        <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={true} />
                     </div>                   
                 )}
             </>
@@ -305,8 +306,40 @@ export function ToolBar(){
                     <button onClick={exportToJSON} style={{ gridRow: '1', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>💾 JSON</button>
                     <button onClick={exportToRBXM} style={{ gridRow: '2', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>🧱 RBXMX</button>
                     <button onClick={handleImport} style={{ gridRow: '1 / span 2', gridColumn: '2', padding: '8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>📂<br/>Импорт</button>
+                    <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={false} />
                 </div>
             </div>
         </div>
     )
+}
+
+function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => void, user: any, onSignOut: () => void, isSmall: boolean}) {
+    return (
+    <div style={{ marginTop: isSmall ? 8 : 12, paddingTop: isSmall ? 8 : 12, borderTop: '1px solid #2e303a' }}>
+        {user ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={{
+                    color: '#48FF73', fontSize: isSmall ? 11 : 12, wordBreak: 'break-all',
+                    padding: isSmall ? "0 4px" : "0"
+                }}>
+                    ✅ {user.email}
+                </span>
+                <button onClick={onSignOut} style={{
+                    padding: isSmall ? '10px' : "8px", background: '#2e303a', color: '#FF5F56', border: 'none',
+                    borderRadius: isSmall ? 6 : 4, cursor: 'pointer', fontSize: isSmall ? 13 : 12, minHeight: isSmall ? 44 : "auto",
+                    fontWeight: 600
+                }}>
+                    Выйти
+                </button>
+            </div>
+        ) : (
+            <button onClick={onAuthClick} style={{
+                width: isSmall ? "100%" : '200%', padding: isSmall ? "10px" : "8px", background: '#aa3bff', color: 'white', border: 'none',
+                borderRadius: isSmall ? 6 : 4, cursor: 'pointer', fontSize: isSmall ? 13 : 12, fontWeight: 600,
+                textAlign: 'center'
+            }}>
+                🔑 Войти / Регистрация
+            </button>
+        )}
+    </div>)
 }

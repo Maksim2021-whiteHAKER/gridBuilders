@@ -6,22 +6,40 @@ import { useDeviceType } from './hooks/useDeviceType.ts'
 import { useEffect, useState } from 'react'
 import { MobileTutorial } from './components/tutorials/MobileTutorial.tsx'
 import { CameraControls } from './components/CameraControls.tsx'
+import { useAuthStore } from './store/authStore'
+import { AuthModal } from './components/AuthModal'
 
 function App(){
     const deviceType = useDeviceType();
+    const { checkUser, user, signOut, isLoading } = useAuthStore()
     const [showTutorial, setShowTutorial] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
     const isSmall = deviceType === 'tablet' || deviceType === 'mobile'
 
     let localSt = "gridbuilders_tutorial_seen"
 
     useEffect(() => {
+        checkUser()
         if (isSmall){
             const hasSeenTutorial = localStorage.getItem(localSt)
             if (!hasSeenTutorial) {
                 setShowTutorial(true);
             }
         }
-    }, [isSmall])
+    }, [isSmall, checkUser])
+
+    if (isLoading) {
+        return (
+            <div 
+                style={{
+                    width: "100vw", height: "100vh", display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    background: "#0a0b15", color: "white", fontSize: 18
+                }}>
+                    Загрузка Сетевых строителей...
+            </div>
+        )
+    }
 
     const closeTutorial = () => {
         localStorage.setItem(localSt, "true")
@@ -31,8 +49,13 @@ function App(){
     return (
         <div style={{width: "100vw", height: "100vh", overflow: "hidden"}}>
             {showTutorial && <MobileTutorial onClose={closeTutorial}/>}
+            {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)}/>}
                 <Scene_GB />
-                <ToolBar />
+                <ToolBar 
+                    onAuthClick={() => setShowAuthModal(true)}
+                    user={user}
+                    onSignOut={signOut}
+                     />
                 <PropertiesPanel />
             {isSmall && (
                 <>
