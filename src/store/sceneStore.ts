@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { version } from "../../package.json"
 import { exportToRoblox } from "../utils/exportToRBXM";
+import * as THREE from 'three'
 
 export interface SceneObject {
     id: string,
@@ -35,6 +36,12 @@ interface SceneStore extends SceneState {
     // История
     past: SceneState[],
     future: SceneState[],
+    controls: any,
+    camera: THREE.Camera | null
+
+    setCamera: (camera: THREE.Camera | null) => void
+    setControls: (controls: any) => void,
+    
     
     // Действия
     addObj: (obj: SceneObject) => void,
@@ -105,6 +112,11 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     gridSize: initialState.gridSize || 1.0,
     past: [],
     future: [],   
+
+    controls: null,
+    camera: null,
+    setCamera: (camera) => set({ camera }),
+    setControls: (controls) => set({ controls }),
   
     addObj: (obj) => {
         const state = get()

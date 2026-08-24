@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 import { useThree } from "@react-three/fiber";
 import * as THREE from 'three'
-import { useIsMobile } from "../hooks/useIsMobile";
+import { useDeviceType } from "../hooks/useDeviceType";
 
 export function calculateCenter(selectedIds: string[], objects: any[]) {
     const selectedObjects = objects.filter((obj) => selectedIds.includes(obj.id));
@@ -115,10 +115,11 @@ export function KeyboardShortcuts() {
 export function CameraFocusAuto() {
     const controls = useThree((state) => state.controls) as any;
     const { selectedIds, objects } = useSceneStore();
-    const isMobile = useIsMobile(768);
+    const deviceType = useDeviceType();
+    const isSmall = deviceType === 'tablet' || deviceType === 'mobile'
 
     useEffect(() => {
-        if (isMobile && selectedIds.length > 0 && objects.length > 0) {
+        if ( isSmall && selectedIds.length > 0 && objects.length > 0) {
             const timeoutId = setTimeout(() => {
                 const center = calculateCenter(selectedIds, objects);
                  if (center) {
@@ -131,6 +132,6 @@ export function CameraFocusAuto() {
             
             return () => clearTimeout(timeoutId);
         }
-    }, [selectedIds, controls, isMobile, objects]);
+    }, [selectedIds, controls, isSmall, objects]);
     return null;
 }

@@ -1,13 +1,14 @@
 // /scr/componetns/PropertiesPanel.tsx
 import { useEffect, useState } from 'react';
 import { useSceneStore } from '../store/sceneStore'
-import { useIsMobile } from '../hooks/useIsMobile';
+import { useDeviceType } from '../hooks/useDeviceType';
 
 export function PropertiesPanel() {
     const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
     const objects = useSceneStore((state) => state.objects);
     const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
-    const isMobile = useIsMobile(768);
+    const deviceType = useDeviceType();
+    const isSmall = deviceType === 'mobile' || deviceType === 'tablet';    
 
     const [tempColor, setTempColor] = useState<string | null>(null)
    
@@ -16,7 +17,7 @@ export function PropertiesPanel() {
     }, [selectedIds])         
 
     if (selectedIds.length === 0) {
-        if (isMobile) {
+        if (isSmall) {
             return null
         } else {
             return (
@@ -179,7 +180,7 @@ export function PropertiesPanel() {
         color: "#ff8877", fontSize: 40, zIndex: 1000, 
     }
 
-    if (isMobile) {
+    if (isSmall) {
         return (
             <div style={{
                 position: 'fixed',
@@ -187,7 +188,8 @@ export function PropertiesPanel() {
                 background: 'rgba(20, 21, 31, 0.98)',
                 borderBottom: '1px solid #2e303a',
                 zIndex: 1000,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                maxHeight: deviceType === 'tablet' ? '180px' : '130px'
             }}>
                 <div style={{position: "absolute", left: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>⬅</div>
                 <div style={{position: "absolute", right: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>➡</div>
@@ -214,7 +216,7 @@ export function PropertiesPanel() {
                     maxHeight: '130px',
                     overflowX: 'auto',
                     gap: 12,
-                    padding: '12px 16px 20px 16px',
+                    padding: deviceType === 'tablet' ? '16px 20px 24px 32px' : '12px 16px 20px 16px',
                     scrollSnapType: 'x mandatory',
                     WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
                     scrollbarWidth: 'none',
@@ -231,7 +233,7 @@ export function PropertiesPanel() {
                     
                     {/* Карточка: Позиция */}
                     <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        minWidth: deviceType === 'tablet' ? 280 : 240, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start'
                     }}>
                         <label style={labelStyleMobile}>Позиция

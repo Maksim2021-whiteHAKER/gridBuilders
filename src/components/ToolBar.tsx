@@ -1,7 +1,7 @@
 // /src/components/ToolBar.tsx
 import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
-import { useIsMobile } from '../hooks/useIsMobile';
+import { useDeviceType } from '../hooks/useDeviceType';
 
 type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
 
@@ -16,6 +16,9 @@ const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
 ]
 
 export function ToolBar(){
+    const camera = useSceneStore((state) => state.camera);
+    const controls = useSceneStore((state) => state.controls);
+    
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
     const exportToJSON = useSceneStore((state) => state.exportJSON);
@@ -23,22 +26,30 @@ export function ToolBar(){
     const importToJSON = useSceneStore((state) => state.importJSON);
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
-    const isMobile = useIsMobile(768);
+    const deviceType = useDeviceType();
+    const isSmall = deviceType === 'mobile' || deviceType === 'tablet';
     const [isExpanded, setIsExpanded] = useState(false);
 
     const handleAddObject = () => {
-        addObject({
-            id: crypto.randomUUID(),
+        const generatedId = () => {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            return "obj_" + Date.now() + Math.random().toString(36).substring(2, 9);
+        }
+        const newObject = {
+            id: generatedId(),
             type: selectedType,
-            position: [0, 0, 0],
-            rotation: [0, 0, 0],
-            scale: [5, 5, 5],
+            position: [0, 0, 0] as [number, number, number],
+            rotation: [0, 0, 0] as [number, number, number],
+            scale: [5, 5, 5] as [number, number, number],
             color: '#bf8ff3',
             opacity: 1.0,
             metalness: 0.0,
             roughness: 0.5,
             wireframe: false
-        })
+        }
+        addObject(newObject)        
     }  
 
     const handleImport = () => {
@@ -53,7 +64,7 @@ export function ToolBar(){
                     const json = eventRead.target?.result as string;
                     const success = importToJSON(json);
                     if (success) {
-                        alert("Сцена загружена! Приятного пользования")
+                        // alert("Сцена загружена! Приятного пользования")
                     } else {
                         alert("Сцена не загружена, проверьте формат, он должен быть JSON")
                     }
@@ -64,13 +75,23 @@ export function ToolBar(){
         input.click();
     }
 
-    if (isMobile) {
+    // ✅ Вынесенная функция сброса камеры
+    const handleResetCamera = () => {
+        if (!camera || !controls) return;
+        camera.position.set(25, 25, 25);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+    }
+
+    if (isSmall) {
         return (
             <>
                 <div style={{
                     position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(20, 21, 31, 0.98)',
-                    borderTop: '1px solid #2e303a', padding: '8px 12px', zIndex: 1000, display: 'flex', flexDirection: 'column',
-                    gap: 8
+                    borderTop: '1px solid #2e303a', padding: deviceType === 'tablet' ? '16px 24px' : '8px 12px', 
+                    zIndex: 1000, display: 'flex', flexDirection: deviceType === 'tablet' ? 'row' : 'column', 
+                    gap: deviceType === 'tablet' ? 16 : 8, justifyContent: "space-between"
                 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
@@ -97,32 +118,24 @@ export function ToolBar(){
                                 <button key={mode} onClick={() => setTransformMode(mode)}
                                     style={{
                                         flex: 1, padding: '10px 4px', background: transformMode === mode ? '#aa3bff' : '#14151f',
-                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 12, minHeight: 40
+                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6, 
+                                        fontSize: deviceType === 'tablet' ? 16 : 12, minHeight: 40, minWidth: 75
                                     }}>
                                     {mode === 'translate' ? '↕️' : mode === 'rotate' ? '🔄' : '⤢'}
                                 </button>
                             ))}
                         </div>
-                        <button onClick={exportToJSON}
-                            style={{
-                                padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
-                                borderRadius: 6, fontSize: 12, minHeight: 40
-                            }}>
-                            💾JSON
+                        <button onClick={exportToJSON} title="Экспорт JSON"
+                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 16, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            💾
                         </button>
-                        <button onClick={exportToRBXM}
-                            style={{
-                                padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
-                                borderRadius: 6, fontSize: 12, minHeight: 40
-                            }}>
-                            🧱RBXMX
+                        <button onClick={exportToRBXM} title="Экспорт RBXMX"
+                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 16, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            🧱
                         </button>
-                        <button onClick={handleImport}
-                            style={{
-                                padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
-                                borderRadius: 6, fontSize: 12, minHeight: 40
-                            }}>
-                            📂Импорт
+                        <button onClick={handleImport} title="Импорт JSON"
+                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px dashed #aa3bff', borderRadius: 6, fontSize: 16, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            📂
                         </button>
                     </div>
                 </div>
@@ -130,39 +143,50 @@ export function ToolBar(){
                     style={{
                         position: 'fixed', bottom: 120, right: 12, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
                         border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
-                        zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                     }}>
-                    {isExpanded ? '❌' : '⚙'}
+                    {isExpanded ? '✕' : '⚙️'}
                 </button>
                 {isExpanded && (
-                    <div
-                        style={{
-                            position: 'fixed', bottom: 200, right: 16, width: 200, background: 'rgba(20, 21, 31, 0.98)',
-                            border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
-                            zIndex: 1001, display: 'flex', flexDirection: 'column', gap: 8
-                        }}>
+                    <div style={{
+                        position: 'fixed', bottom: 180, right: 16, width: 200, background: 'rgba(20, 21, 31, 0.98)',
+                        border: '1px solid #2e303a', borderRadius: 12, padding: 12,
+                        zIndex: 1001, display: 'flex', flexDirection: 'column', gap: 8,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}>
                         <button onClick={undo} disabled={!canUndo()}
                             style={{
                                 padding: '10px', background: canUndo() ? '#14151f' : '#0a0b15', color: canUndo() ? 'white' : '#6d7280',
-                                border: '1px solid #2e303a', borderRadius: 6, fontSize: 13, minHeight: 44
+                                border: '1px solid #2e303a', borderRadius: 6, fontSize: 13, minHeight: 44, textAlign: 'left'
                             }}>
                             ↶ Отмена
                         </button>
                         <button onClick={redo} disabled={!canRedo()}
                             style={{
                                 padding: '10px', background: canRedo() ? '#14151f' : '#0a0b15', color: canRedo() ? 'white' : '#6d7280',
-                                border: '1px solid #2e303a', borderRadius: 6, fontSize: 13, minHeight: 44
+                                border: '1px solid #2e303a', borderRadius: 6, fontSize: 13, minHeight: 44, textAlign: 'left'
                             }}>
                             ↷ Вернуть
                         </button>
+                        
+                        {/* ✅ Кнопка сброса камеры для мобильных */}
+                        <button onClick={handleResetCamera}
+                            style={{
+                                padding: '10px', background: '#2e303a', color: 'white', border: 'none',
+                                borderRadius: 6, fontSize: 13, minHeight: 44, fontWeight: 600, textAlign: 'left'
+                            }}>
+                            🔄 Сброс камеры
+                        </button>
+
                         <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px',
-                            background: '#14151f', borderRadius: 6
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px',
+                            background: '#14151f', borderRadius: 6, border: '1px solid #2e303a'
                         }}>
-                            <span style={{ color: 'white', fontSize: 13 }}>Привязь к сетке</span>
-                            <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{ width: 20, height: 20 }} />
+                            <span style={{ color: 'white', fontSize: 13 }}>Привязка к сетке</span>
+                            <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{ width: 20, height: 20, accentColor: '#aa3bff' }} />
                         </div>
-                    </div>
+                    </div>                   
                 )}
             </>
         );
@@ -183,197 +207,104 @@ export function ToolBar(){
             gap: 12,
             minWidth: 200
         }}>
-            <label style={{
-                color: 'rgb(255, 255, 255)',
-                fontSize: 13,
-                fontWeight: 200
-            }}>Тип объекта</label>
+            <label style={{ color: 'rgb(255, 255, 255)', fontSize: 13, fontWeight: 200 }}>Тип объекта</label>
             
             <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
             style={{
-                padding: '8px 12px',
-                background: '#14151f',
-                color: 'rgb(255, 255, 255)',
-                border: '1px solid rgba(255, 255, 210, 0.8)',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontSize: 14
-            }}>{OBJECT_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                    {type.name}
-                </option>
-            ))}
+                padding: '8px 12px', background: '#14151f', color: 'rgb(255, 255, 255)',
+                border: '1px solid rgba(255, 255, 210, 0.8)', borderRadius: 4, cursor: 'pointer', fontSize: 14
+            }}>
+                {OBJECT_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>{type.name}</option>
+                ))}
             </select>
 
-            <button
-                onClick={handleAddObject}
-                style={{
-                    padding: '8px 16px',
-                    background: 'var(--accent, #aa3bff)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer'
-                }}
-            >
+            <button onClick={handleAddObject} style={{
+                padding: '8px 16px', background: 'var(--accent, #aa3bff)', color: 'white',
+                border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500
+            }}>
                 Добавить Объект
             </button>
 
-            {/* Undo/Redo кнопки */}
-            <div style={{ display: 'flex', gap: 4 }}>
+            {/* Undo/Redo и Сброс камеры */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={undo} disabled={!canUndo()} style={{
+                        flex: 1, padding: '6px 8px', background: canUndo() ? '#14151f' : '#0a0b15',
+                        color: canUndo() ? 'white' : '#6b7280', border: '1px solid #2e303a', borderRadius: 4,
+                        cursor: canUndo() ? 'pointer' : 'not-allowed', fontSize: 12, opacity: canUndo() ? 1 : 0.5
+                    }}>↶ Отмена</button>
+                    <button onClick={redo} disabled={!canRedo()} style={{
+                        flex: 1, padding: '6px 8px', background: canRedo() ? '#14151f' : '#0a0b15',
+                        color: canRedo() ? 'white' : '#6b7280', border: '1px solid #2e303a', borderRadius: 4,
+                        cursor: canRedo() ? 'pointer' : 'not-allowed', fontSize: 12, opacity: canRedo() ? 1 : 0.5
+                    }}>↷ Вернуть</button>
+                </div>
+                
+                {/* ✅ Кнопка сброса камеры для десктопа */}
                 <button
-                    onClick={undo}
-                    disabled={!canUndo()}
+                    onClick={handleResetCamera}
                     style={{
-                        flex: 1,
-                        padding: '6px 8px',
-                        background: canUndo() ? '#14151f' : '#0a0b15',
-                        color: canUndo() ? 'white' : '#6b7280',
-                        border: '1px solid #2e303a',
+                        width: '100%',
+                        padding: '8px',
+                        background: '#2e303a',
+                        color: 'white',
+                        border: 'none',
                         borderRadius: 4,
-                        cursor: canUndo() ? 'pointer' : 'not-allowed',
+                        cursor: 'pointer',
                         fontSize: 12,
-                        opacity: canUndo() ? 1 : 0.5
+                        fontWeight: 600,
+                        transition: 'background 0.2s'
                     }}
-                    title="Отменить (Ctrl+Z)"
+                    onMouseOver={(e) => e.currentTarget.style.background = '#3e404a'}
+                    onMouseOut={(e) => e.currentTarget.style.background = '#2e303a'}
+                    title="Вернуть камеру в стандартное положение (25, 25, 25)"
                 >
-                    ↶ Отмена
-                </button>
-                <button
-                    onClick={redo}
-                    disabled={!canRedo()}
-                    style={{
-                        flex: 1,
-                        padding: '6px 8px',
-                        background: canRedo() ? '#14151f' : '#0a0b15',
-                        color: canRedo() ? 'white' : '#6b7280',
-                        border: '1px solid #2e303a',
-                        borderRadius: 4,
-                        cursor: canRedo() ? 'pointer' : 'not-allowed',
-                        fontSize: 12,
-                        opacity: canRedo() ? 1 : 0.5
-                    }}
-                    title="Повторить (Ctrl+Y)"
-                >
-                    ↷ Вернуть
+                    🔄 Сброс камеры
                 </button>
             </div>
 
             {selectedIds.length > 0 && (
                 <>
-                    <label style={{
-                        color: 'rgb(255,255,255)',
-                        fontSize: 13,
-                        fontWeight: 200,
-                        marginTop: 8
-                    }}>Тип управления объектом</label>
-
+                    <label style={{ color: 'rgb(255,255,255)', fontSize: 13, fontWeight: 200, marginTop: 8 }}>Тип управления</label>
                     <div style={{ display: 'flex', gap: 4 }}>
-                        <button
-                            onClick={() => setTransformMode('translate')}
-                            style={{
-                                flex: 1,
-                                padding: '6px 8px',
-                                background: transformMode === 'translate' ? '#aa3bff' : '#14151f',
-                                color: 'white',
-                                border: '1px solid #2e303a',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                fontSize: 12
-                            }}
-                            title="Перемещение (W)"
-                        >
-                            ↕️ W
-                        </button>
-                        <button
-                            onClick={() => setTransformMode('rotate')}
-                            style={{
-                                flex: 1,
-                                padding: '6px 8px',
-                                background: transformMode === 'rotate' ? '#aa3bff' : '#14151f',
-                                color: 'white',
-                                border: '1px solid #2e303a',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                fontSize: 12
-                            }}
-                            title="Вращение (R)"
-                        >
-                            🔄 R
-                        </button>
-                        <button
-                            onClick={() => setTransformMode('scale')}
-                            style={{
-                                flex: 1,
-                                padding: '6px 8px',
-                                background: transformMode === 'scale' ? '#aa3bff' : '#14151f',
-                                color: 'white',
-                                border: '1px solid #2e303a',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                fontSize: 12
-                            }}
-                            title="Масштаб (S)"
-                        >
-                            ⤢ S
-                        </button>
+                        <button onClick={() => setTransformMode('translate')} style={{
+                            flex: 1, padding: '6px 8px', background: transformMode === 'translate' ? '#aa3bff' : '#14151f',
+                            color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12
+                        }}>↕️ W</button>
+                        <button onClick={() => setTransformMode('rotate')} style={{
+                            flex: 1, padding: '6px 8px', background: transformMode === 'rotate' ? '#aa3bff' : '#14151f',
+                            color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12
+                        }}>🔄 R</button>
+                        <button onClick={() => setTransformMode('scale')} style={{
+                            flex: 1, padding: '6px 8px', background: transformMode === 'scale' ? '#aa3bff' : '#14151f',
+                            color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12
+                        }}>⤢ S</button>
                     </div>
 
-                     <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        marginTop: 4, 
-                        padding: '8px 12px',
-                        background: '#14151f', 
-                        borderRadius: 4, 
-                        border: '1px solid #2e303a'
-                    }}>
-                        <span style={{color: 'white', fontSize: 13, fontWeight: 200}}>
-                            Привязка к сетке
-                        </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, padding: '8px 12px', background: '#14151f', borderRadius: 4, border: '1px solid #2e303a' }}>
+                        <span style={{color: 'white', fontSize: 13, fontWeight: 200}}>Привязка к сетке</span>
                         <label style={{position: 'relative', display: 'inline-block', width: 40, height: 22, cursor: 'pointer'}}>
                             <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{opacity: 0, width: 0, height: 0}}/>
                             <span style={{
-                                position: 'absolute', 
-                                top: 0, bottom: 0, left: 0, right: 0, 
-                                backgroundColor: snapEnabled ? '#aa3bff' : '#2e303a', 
-                                borderRadius: 22,
-                                transition: 'background-color 0.3s',
-                                boxShadow: snapEnabled ? '0 0 8px rgba(170, 59, 255, 0.4)' : 'none'
+                                position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, 
+                                backgroundColor: snapEnabled ? '#aa3bff' : '#2e303a', borderRadius: 22, transition: 'background-color 0.3s'
                             }}></span>
                             <span style={{
-                                position: 'absolute', 
-                                height: 16, 
-                                width: 16, 
-                                left: snapEnabled ? 21 : 3, 
-                                bottom: 3, 
-                                backgroundColor: 'white', 
-                                borderRadius: '50%', 
-                                transition: 'left 0.3s'
+                                position: 'absolute', height: 16, width: 16, left: snapEnabled ? 21 : 3, bottom: 3, 
+                                backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s'
                             }}></span>
                         </label>
                     </div>
                 </>
             )}
-            <div style={{marginTop: 8, paddingTop: 4, alignItems: 'center', border: '1px solid #2e303a', display: 'flex', flexDirection: 'column', gap: 6}}>
-                <label style={{color: 'white', fontSize: 12, fontWeight: 200}}>Сохранение сцены / загрузка из ...</label>
+
+            <div style={{marginTop: 8, paddingTop: 12, borderTop: '1px solid #2e303a', display: 'flex', flexDirection: 'column', gap: 6}}>
+                <label style={{color: 'white', fontSize: 12, fontWeight: 200}}>Сохранение / загрузка</label>
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 4}}>
-                    <button onClick={exportToJSON}
-                    style={{ gridRow: '1', gridColumn: '1', padding: '8px', background: '#14151f',
-                     color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', 
-                     fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, 
-                     transition: 'all 0.2s'}} title='Скачать сцену из JSON'>
-                        Скачать (JSON)
-                    </button>
-                    <button onClick={exportToRBXM} 
-                    style={{ gridRow: '2', gridColumn: '1', flexDirection: 'column', padding: '6px 8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Скачать сцену из RBXM'>
-                        Скачать (RBXMX)
-                    </button>
-                    <button onClick={handleImport}
-                    style={{ gridRow: '1 / span 2', gridColumn: '2', padding: '6px 8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer',  fontSize: 12}} title='Выгрузить сцену из JSON'>
-                        Загрузить из ...
-                    </button>
+                    <button onClick={exportToJSON} style={{ gridRow: '1', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>💾 JSON</button>
+                    <button onClick={exportToRBXM} style={{ gridRow: '2', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>🧱 RBXMX</button>
+                    <button onClick={handleImport} style={{ gridRow: '1 / span 2', gridColumn: '2', padding: '8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>📂<br/>Импорт</button>
                 </div>
             </div>
         </div>

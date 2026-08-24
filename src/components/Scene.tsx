@@ -9,6 +9,30 @@ import * as THREE from 'three'
 import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 
+function CameraSaver() {
+    const { camera } = useThree();
+    const setCamera = useSceneStore((state) => state.setCamera)
+
+    useEffect(() => {
+        if (camera) {
+            setCamera(camera)
+        }
+    }, [camera, setCamera])
+    return null
+}
+
+function ControlsSaver() {
+    const {controls} = useThree();
+    const setControls = useSceneStore((state) => state.setControls)
+
+    useEffect(() => {
+        if (controls) {
+            setControls(controls)
+        }
+    }, [controls, setControls])
+    return null
+}
+
 function ObjectMaterial({obj, isSelected} : {obj:any, isSelected:boolean}) {
     const texture = obj.textureUrl ? useLoader(THREE.TextureLoader, obj.textureUrl) as THREE.Texture : undefined;   
     
@@ -205,6 +229,8 @@ export function Scene_GB(){
                 }} />
             )}
             <Canvas shadows dpr={[1, 2]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: true, alpha: false}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}>                  
+                <CameraSaver />
+                <ControlsSaver />
                 <color attach='background' args={[COLORS.bg]}/>
                 <ambientLight intensity={0.5}/>
                 <directionalLight 
