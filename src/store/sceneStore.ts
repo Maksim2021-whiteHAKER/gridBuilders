@@ -46,6 +46,7 @@ interface SceneStore extends SceneState {
     // Действия
     addObj: (obj: SceneObject) => void,
     updateObj: (id: string, updates: Partial<SceneObject>, skipHistory?: boolean) => void,
+    setObjects: (newObjects: any[]) => void,
     deleteObj: (id: string) => void,
     clearScene: () => void,
     selectObject: (id: string ) => void,
@@ -139,6 +140,13 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         })
         get().saveToLocalStorage();
     },
+
+    setObjects: (newObjects: any[]) => set({
+        objects: newObjects,
+        selectedIds: [],
+        past: [],
+        future: []
+    }),
 
     updateObj: (id, update, skipHistory = false) => {
         const state = get()

@@ -15,7 +15,9 @@ const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
     { value: 'text', name: 'Текст', icon: '🔤'}
 ]
 
-export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void, user: any, onSignOut: () => void}){
+export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
+    onAuthClick: () => void, user: any, onSignOut: () => void, onOpenProjects: () => void
+}){
     const camera = useSceneStore((state) => state.camera);
     const controls = useSceneStore((state) => state.controls);
     
@@ -29,6 +31,7 @@ export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void
     const deviceType = useDeviceType();
     const isSmall = deviceType === 'mobile' || deviceType === 'tablet';
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpandedAutorized, setIsExpandedAutorized] = useState(false);
 
     const handleAddObject = () => {
         const generatedId = () => {
@@ -150,7 +153,7 @@ export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void
                 </button>
                 {isExpanded && (
                     <div style={{
-                        position: 'fixed', bottom: 85, right: 68, width: 200, background: 'rgba(20, 21, 31, 0.98)',
+                        position: 'fixed', bottom: 85, right: 122, width: 200, background: 'rgba(20, 21, 31, 0.98)',
                         border: '1px solid #2e303a', borderRadius: 12, padding: 12,
                         zIndex: 1001, display: 'flex', flexDirection: 'column', gap: 8,
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
@@ -186,7 +189,36 @@ export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void
                             <span style={{ color: 'white', fontSize: 13 }}>Привязка к сетке</span>
                             <input type='checkbox' checked={snapEnabled} onChange={toggleSnap} style={{ width: 20, height: 20, accentColor: '#aa3bff' }} />
                         </div>
+                    </div>                   
+                )}
+                <button onClick={() => setIsExpandedAutorized(!isExpandedAutorized)}
+                    style={{
+                        position: 'fixed', bottom: 85, right: 70, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
+                        border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
+                        zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}> {isExpandedAutorized ? "✕" : "⚙👤"}
+                </button>
+                {isExpandedAutorized && (
+                    <div style={{
+                        position: 'fixed', bottom: 85, right: 122, width: 200, background: 'rgba(20, 21, 31, 0.98)',
+                        border: '1px solid #2e303a', borderRadius: 12, padding: 1,
+                        zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}>
                         <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={true} />
+                        <button
+                            onClick={() => user ? onOpenProjects() : onAuthClick()}
+                            style={{
+                                padding: 8, background: user ? "#14151f" : "#0a0b15",
+                                color: user ? "white" : "#9ca3af",
+                                border: user ? "1px solid #2e303a" : "1px dashed #aa3bff",
+                                borderRadius: 8, cursor: "pointer", fontSize: 12,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                gap: 6, marginTop: "5px"
+                            }}>
+                            {user ? "📁 Мои проекты" : "🔐 Войти для доступа к облаку"}
+                        </button>
                     </div>                   
                 )}
             </>
@@ -206,7 +238,7 @@ export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
-            minWidth: 200
+            minWidth: 250
         }}>
             <label style={{ color: 'rgb(255, 255, 255)', fontSize: 13, fontWeight: 200 }}>Тип объекта</label>
             
@@ -306,8 +338,20 @@ export function ToolBar({onAuthClick, user, onSignOut}: {onAuthClick: () => void
                     <button onClick={exportToJSON} style={{ gridRow: '1', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>💾 JSON</button>
                     <button onClick={exportToRBXM} style={{ gridRow: '2', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>🧱 RBXMX</button>
                     <button onClick={handleImport} style={{ gridRow: '1 / span 2', gridColumn: '2', padding: '8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>📂<br/>Импорт</button>
-                    <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={false} />
                 </div>
+                <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={false} />
+                <button
+                    onClick={() => user ? onOpenProjects() : onAuthClick()}
+                    style={{
+                        padding: 8, background: user ? "#14151f" : "#0a0b15",
+                        color: user ? "white" : "#9ca3af",
+                        border: user ? "1px solid #2e303a" : "1px dashed #aa3bff",
+                        borderRadius: 8, cursor: "pointer", fontSize: 12,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        gap: 6, marginTop: "5px"
+                    }}>
+                    {user ? "📁 Мои проекты" : "🔐 Войти для доступа к облаку"}
+                </button>
             </div>
         </div>
     )
@@ -317,7 +361,7 @@ function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => 
     return (
     <div style={{ marginTop: isSmall ? 8 : 12, paddingTop: isSmall ? 8 : 12, borderTop: '1px solid #2e303a' }}>
         {user ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, }}>
                 <span style={{
                     color: '#48FF73', fontSize: isSmall ? 11 : 12, wordBreak: 'break-all',
                     padding: isSmall ? "0 4px" : "0"
