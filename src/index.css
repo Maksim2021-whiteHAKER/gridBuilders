@@ -155,3 +155,27 @@ button:focus-visible {
   width: 100vw;
   height: 100vh;
 }
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+
+@media screen and (orientation: landscape) and (max-height: 500){
+      /* Уменьшаем высоту нижней панели */
+      .tool-bar-mobile {
+        padding: 4px 8px !important;
+    }
+    
+    /* Уменьшаем шрифты */
+    .mobile-text-small {
+        font-size: 10px !important;
+    }
+    
+    /* Скрываем лишние элементы на очень низких экранах */
+    .mobile-hide-landscape {
+        display: none !important;
+    }
+}

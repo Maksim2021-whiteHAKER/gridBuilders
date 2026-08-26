@@ -9,6 +9,7 @@ import { CameraControls } from './components/CameraControls.tsx'
 import { useAuthStore } from './store/authStore'
 import { AuthModal } from './components/AuthModal'
 import { ProjectModal } from './components/ProjectModal.tsx'
+import { FullscreenOrientation } from './components/FullScreenOrientation.tsx'
 
 function App(){
     const deviceType = useDeviceType();
@@ -53,6 +54,8 @@ function App(){
             {showTutorial && <MobileTutorial onClose={closeTutorial}/>}
             {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)}/>}
             {showProjectModal && <ProjectModal onClose={() => setShowProjectModal(false)} />}
+
+            {isSmall && <FullscreenOrientation />}
                 <Scene_GB />
                 <ToolBar 
                     onAuthClick={() => setShowAuthModal(true)}

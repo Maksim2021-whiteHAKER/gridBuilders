@@ -185,17 +185,28 @@ function ClickOutsideHandle() {
 export function Scene_GB(){
     const objects = useSceneStore((state) => state.objects);
     const selectedIds = useSceneStore((state) => state.selectedIds);
-
+    
     const updateObj = useSceneStore((state) => state.updateObj);
     const transformMode = useSceneStore((state) => state.transformMode);
     const snapEnabled = useSceneStore((state) => state.snapEnabled);
     const gridSize = useSceneStore((state) => state.gridSize);
-
+    
     const selectObject = useSceneStore((state) => state.selectObject);
     const addToSelection = useSceneStore((state) => state.addToSelection);
     const clearSelection = useSceneStore((state) => state.clearSelection);
 
+    const lastSaved = useSceneStore((state) => state.lastSaved)
+
     const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null)
+    const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+
+    useEffect(() => {
+        if (lastSaved) {
+            setShowSavedIndicator(true);
+            const timer = setTimeout(() => setShowSavedIndicator(false), 2500);
+            return () => clearTimeout(timer);
+        }
+    }, [lastSaved])
 
     const handleSelectionComplete = (newSelection: string[], isCtrl: boolean) => {
         if (newSelection.length > 0){
@@ -273,6 +284,16 @@ export function Scene_GB(){
                 <MarqueeSelection onMarqueeChange={setMarquee} onSelectionComplete={handleSelectionComplete} />
                 <CameraFocusAuto />
             </Canvas>
+            { showSavedIndicator && (
+                <div style={{position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+                    background: "rgba(72, 255, 115, 0.9)", color: "#0a0b15", 
+                    padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, zIndex: 7000,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)", display: "flex", alignItems: "center",
+                    gap: 6, animation: "fadeInOut 2s ease-in-out"
+                }}>
+                    ✅ Автосохранение
+                </div>
+            )}
         </div>
     )
 }

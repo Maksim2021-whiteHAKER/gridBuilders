@@ -37,11 +37,11 @@ interface SceneStore extends SceneState {
     past: SceneState[],
     future: SceneState[],
     controls: any,
-    camera: THREE.Camera | null
+    camera: THREE.Camera | null,
+    lastSaved: number | null,
 
     setCamera: (camera: THREE.Camera | null) => void
-    setControls: (controls: any) => void,
-    
+    setControls: (controls: any) => void,   
     
     // Действия
     addObj: (obj: SceneObject) => void,
@@ -113,6 +113,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     gridSize: initialState.gridSize || 1.0,
     past: [],
     future: [],   
+    lastSaved: null,
 
     controls: null,
     camera: null,
@@ -258,6 +259,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         };
         try {
             localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData))
+            set({ lastSaved: Date.now() })
         } catch (e) {
             console.error("Провал сохранения в Локальное хранилище: " + e);
         }

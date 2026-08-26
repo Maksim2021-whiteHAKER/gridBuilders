@@ -378,7 +378,7 @@ function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => 
             </div>
         ) : (
             <button onClick={onAuthClick} style={{
-                width: isSmall ? "100%" : '200%', padding: isSmall ? "10px" : "8px", background: '#aa3bff', color: 'white', border: 'none',
+                width: "100%", padding: isSmall ? "10px" : "8px", background: '#aa3bff', color: 'white', border: 'none',
                 borderRadius: isSmall ? 6 : 4, cursor: 'pointer', fontSize: isSmall ? 13 : 12, fontWeight: 600,
                 textAlign: 'center'
             }}>
