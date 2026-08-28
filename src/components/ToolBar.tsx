@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
 import { useDeviceType } from '../hooks/useDeviceType';
+import { ExportImportModal } from './ExportImportModal';
 
 type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
 
@@ -15,32 +16,63 @@ const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
     { value: 'text', name: 'Текст', icon: '🔤'}
 ]
 
+export function generatedId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return "obj_" + Date.now() + Math.random().toString(36).substring(2, 9);
+}
+
+function handleImportType(acceptImport: string, importType: any ) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = acceptImport;
+    input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        
+        if (acceptImport === '.json') {
+            const reader = new FileReader();
+            reader.onload = (eventRead) => {
+                const json = eventRead.target?.result as string;
+                const success = importType(json);
+                if (!success) alert("Сцена не загружена, проверьте формат, он должен быть JSON");
+            };
+            reader.readAsText(file);
+        } else if (acceptImport === '.glb,.gltf') { 
+            importType(file, (success: boolean) => { 
+                if (success) console.log("Формат glb успешно импортирован"); else {
+                    alert("Ошибка при импорте GLB, убедитесь что 3д модель правильная");
+                }
+            }); 
+        }        
+    };
+    input.click();
+}
+
 export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     onAuthClick: () => void, user: any, onSignOut: () => void, onOpenProjects: () => void
 }){
     const camera = useSceneStore((state) => state.camera);
     const controls = useSceneStore((state) => state.controls);
-    
     const addObject = useSceneStore((state) => state.addObj);
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
     const exportToJSON = useSceneStore((state) => state.exportJSON);
     const exportToRBXM = useSceneStore((state) => state.exportRBXM);
-    const exportToGLB = useSceneStore((state) => state.exportGLB)
+    const exportToGLB = useSceneStore((state) => state.exportGLB);
     const importToJSON = useSceneStore((state) => state.importJSON);
+    const importToGLB = useSceneStore((state) => state.importGLB);
+
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
     const deviceType = useDeviceType();
     const isSmall = deviceType === 'mobile' || deviceType === 'tablet';
     const [isExpanded, setIsExpanded] = useState(false);
     const [isExpandedAutorized, setIsExpandedAutorized] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     const handleAddObject = () => {
-        const generatedId = () => {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
-            return "obj_" + Date.now() + Math.random().toString(36).substring(2, 9);
-        }
         const newObject = {
             id: generatedId(),
             type: selectedType,
@@ -56,29 +88,6 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
         addObject(newObject)        
     }  
 
-    const handleImport = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (eventRead) => {
-                    const json = eventRead.target?.result as string;
-                    const success = importToJSON(json);
-                    if (success) {
-                        // alert("Сцена загружена! Приятного пользования")
-                    } else {
-                        alert("Сцена не загружена, проверьте формат, он должен быть JSON")
-                    }
-                };
-                reader.readAsText(file);
-            }
-        };
-        input.click();
-    }
-
     // ✅ Вынесенная функция сброса камеры
     const handleResetCamera = () => {
         if (!camera || !controls) return;
@@ -93,8 +102,8 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
             <>
                 <div style={{
                     position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(20, 21, 31, 0.98)',
-                    borderTop: '1px solid #2e303a', padding: deviceType === 'tablet' ? '10px 24px' : '8px 12px', 
-                    zIndex: 1000, display: 'flex', flexDirection: deviceType === 'tablet' ? 'row' : 'column', 
+                    borderTop: '1px solid #2e303a', padding: deviceType === 'tablet' ? '10px 24px' : '8px 12px',
+                    zIndex: 1000, display: 'flex', flexDirection: deviceType === 'tablet' ? 'row' : 'column',
                     gap: deviceType === 'tablet' ? 16 : 8, justifyContent: "space-between"
                 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -122,40 +131,28 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                                 <button key={mode} onClick={() => setTransformMode(mode)}
                                     style={{
                                         flex: 1, padding: '10px 4px', background: transformMode === mode ? '#aa3bff' : '#14151f',
-                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6, 
+                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6,
                                         fontSize: deviceType === 'tablet' ? 16 : 12, minHeight: 40, minWidth: 75
                                     }}>
                                     {mode === 'translate' ? '↕️' : mode === 'rotate' ? '🔄' : '⤢'}
                                 </button>
                             ))}
                         </div>
-                        <select id="exportFormatMobile"
+                        <button onClick={() => setShowExportModal(true)}
                             style={{
-                                padding: "8px", background: "#14151f", color: "white", border: "1px solid #2e303a",
-                                borderRadius: 6, cursor: "pointer", fontSize: 12, minHeight: 40,
+                                padding: '10px 16px', background: '#1a1b26', color: 'white',
+                                border: '1px dashed #aa3bff', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                minHeight: 40, whiteSpace: 'nowrap'
                             }}>
-                            <option value="json">💾 JSON</option>
-                            <option value="rbxmx">🧱 RBXMX</option>
-                            <option value="glb">📦 GLB</option>
-                        </select>
-                        <button
-                            onClick={() => {
-                                const format = (document.getElementById('exportFormatMobile') as HTMLSelectElement)?.value;
-                                if (format === "json") exportToJSON();
-                                else if (format === "rbxmx") exportToRBXM();
-                                else if (format === "glb") exportToGLB();
-                            }}
-                            style={{
-                                padding: "10px 12px", background: "#aa3bff", color: "white", border: "1px solid #88ff99",
-                                borderRadius: 6, fontSize: 12, minHeight: 40, width: 90, display: "flex",
-                                alignItems: "center", justifyContent: "center"
-                            }} title='Экспорт'
-                        >
-                            {"<- Экспорт формата"}
+                                📤 Exp
                         </button>
-                        <button onClick={handleImport} title="Импорт JSON"
-                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px dashed #aa3bff', borderRadius: 6, fontSize: 12, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            📂 IMP
+                        <button onClick={() => setShowImportModal(true)}
+                            style={{
+                                padding: '10px 16px', background: '#1a1b26', color: 'white',
+                                border: '1px dashed #aa3bff', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                minHeight: 40, whiteSpace: 'nowrap'
+                            }}>
+                                📥 Imp
                         </button>
                     </div>
                 </div>
@@ -236,7 +233,28 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                             }}>
                             {user ? "📁 Мои проекты" : "🔐 Войти для доступа к облаку"}
                         </button>
-                    </div>                   
+                    </div>
+                )}
+                {showExportModal && (
+                    <ExportImportModal
+                        mode="export"
+                        onClose={() => setShowExportModal(false)}
+                        onSelect={(format) => {
+                            if (format === 'json') exportToJSON();
+                            else if (format === 'rbxmx') exportToRBXM();
+                            else if (format === 'glb') exportToGLB();
+                        }}
+                    />
+                )}
+                {showImportModal && (
+                    <ExportImportModal
+                        mode="import"
+                        onClose={() => setShowImportModal(false)}
+                        onSelect={(format) => {
+                            if (format === 'json') handleImportType('.json', importToJSON);
+                            else if (format === 'glb') handleImportType('.glb,.gltf', importToGLB);
+                        }}
+                    />
                 )}
             </>
         );
@@ -374,8 +392,27 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                        {"<- Экспорт формата"}
                     </button>
                 </div>
-                <button onClick={handleImport} style={{ padding: '8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>📂<br/>Импорт JSON</button>
-
+                <div style={{display: "flex", gap: 4}}>
+                    <select id="importFormat" 
+                    style={{flex: 1, padding: "8px", background: "#14151f", color: "white", border: "1px solid #2e303a", 
+                        borderRadius: 4, cursor: "pointer", fontSize: 12, outline: "none"
+                    }}>
+                        <option value="impjson">📂 Импорт JSON</option>
+                        <option value="imprbxmx">Импорт GLB</option>
+                    </select>
+                    <button 
+                        onClick={() => {
+                            const format = (document.getElementById('importFormat') as HTMLSelectElement)?.value;
+                            if (format === "impjson") handleImportType('.json', importToJSON);
+                            else if (format === "imprbxmx") handleImportType('.glb,.gltf', importToGLB);
+                        }} 
+                        style={{padding: "8px 12px", background: "#aa3bff", color: "white", border: "none",
+                            borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
+                        }}                    
+                    >
+                       {"<- Импорт формата"}
+                    </button>
+                </div>
                 <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={false} />
                 <button
                     onClick={() => user ? onOpenProjects() : onAuthClick()}

@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { version } from "../../package.json"
 import { exportToRoblox } from "../utils/exportToRBXM";
 import { exportToGLB } from "../utils/exportToGLB";
+import { importFromGLB as importGLBUtils } from "../utils/importFromGLB";
 import * as THREE from 'three'
 
 export interface SceneObject {
@@ -67,6 +68,7 @@ interface SceneStore extends SceneState {
     exportRBXM: () => void,
     exportGLB: () => void,
     importJSON: (jsonString: string) => boolean,
+    importGLB: (file: File, callback: (success: boolean) => void) => void; 
         
     // Undo/Redo
     undo: () => void,
@@ -343,7 +345,26 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             return false;
         }
     },    
-    // 
+    
+    importGLB: (file: File, callback: (success: boolean) => void) => {
+        const state = get();
+        importGLBUtils(
+            file, (objects) => {
+                set({
+                    past: [...state.past.slice(-49), getCurrentState(state)],
+                    future: [],
+                    objects: [...state.objects, ...objects],
+                    selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
+                })
+                get().saveToLocalStorage();
+                callback(true);
+            }, (error) => {
+                console.error(error);
+                alert(error)
+                callback(false)
+            }
+        )
+    },
 
     undo: () => {
         const state = get()
