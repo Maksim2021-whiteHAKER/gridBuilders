@@ -189,13 +189,13 @@ export function PropertiesPanel() {
                 borderBottom: '1px solid #2e303a',
                 zIndex: 1000,
                 boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                maxHeight: deviceType === 'tablet' ? '180px' : '130px'
+                maxHeight: deviceType === 'tablet' ? '160px' : '130px'
             }}>
                 <div style={{position: "absolute", left: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>⬅</div>
                 <div style={{position: "absolute", right: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>➡</div>
                 {/* Заголовок с кнопкой закрытия */}
                 <div style={{
-                    display: 'flex', alignItems: 'center', padding: '0px 15px', 
+                    display: 'flex', alignItems: 'center', padding: '0px 10px', 
                     borderBottom: '1px solid #2e303a', borderRadius: '25%'
                 }}>
                     <span style={{ flex: 1, textAlign: 'center', color: '#e4e4e7', fontSize: 20, fontWeight: 600, }}>

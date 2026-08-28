@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { version } from "../../package.json"
 import { exportToRoblox } from "../utils/exportToRBXM";
+import { exportToGLB } from "../utils/exportToGLB";
 import * as THREE from 'three'
 
 export interface SceneObject {
@@ -64,6 +65,7 @@ interface SceneStore extends SceneState {
     loadFromLocalStorage: () => void,
     exportJSON: () => void,
     exportRBXM: () => void,
+    exportGLB: () => void,
     importJSON: (jsonString: string) => boolean,
         
     // Undo/Redo
@@ -311,6 +313,11 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     exportRBXM: () => {
         const state = get();
         exportToRoblox(state.objects);
+    },
+
+    exportGLB: () => {
+        const state = get()
+        exportToGLB(state.objects, `gridbuilders_scene_${Date.now()}`)
     },
 
     importJSON: (jsonString: string) => {

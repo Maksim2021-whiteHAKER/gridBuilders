@@ -9,7 +9,7 @@ import { CameraControls } from './components/CameraControls.tsx'
 import { useAuthStore } from './store/authStore'
 import { AuthModal } from './components/AuthModal'
 import { ProjectModal } from './components/ProjectModal.tsx'
-import { FullscreenOrientation } from './components/FullScreenOrientation.tsx'
+import { FullscreenOrientation } from './components/FullscreenOrientation.tsx'
 
 function App(){
     const deviceType = useDeviceType();

@@ -239,7 +239,7 @@ export function Scene_GB(){
                     zIndex: 9999
                 }} />
             )}
-            <Canvas shadows dpr={[1, 2]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: true, alpha: false}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}>                  
+            <Canvas shadows dpr={[1, 2]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: true, alpha: false, preserveDrawingBuffer: true}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}>                  
                 <CameraSaver />
                 <ControlsSaver />
                 <color attach='background' args={[COLORS.bg]}/>

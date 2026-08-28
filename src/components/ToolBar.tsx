@@ -25,6 +25,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     const [selectedType, setSelectedType] = useState<ObjectType>('box');
     const exportToJSON = useSceneStore((state) => state.exportJSON);
     const exportToRBXM = useSceneStore((state) => state.exportRBXM);
+    const exportToGLB = useSceneStore((state) => state.exportGLB)
     const importToJSON = useSceneStore((state) => state.importJSON);
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
@@ -92,7 +93,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
             <>
                 <div style={{
                     position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(20, 21, 31, 0.98)',
-                    borderTop: '1px solid #2e303a', padding: deviceType === 'tablet' ? '16px 24px' : '8px 12px', 
+                    borderTop: '1px solid #2e303a', padding: deviceType === 'tablet' ? '10px 24px' : '8px 12px', 
                     zIndex: 1000, display: 'flex', flexDirection: deviceType === 'tablet' ? 'row' : 'column', 
                     gap: deviceType === 'tablet' ? 16 : 8, justifyContent: "space-between"
                 }}>
@@ -128,17 +129,33 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                                 </button>
                             ))}
                         </div>
-                        <button onClick={exportToJSON} title="Экспорт JSON"
-                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 16, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            💾
-                        </button>
-                        <button onClick={exportToRBXM} title="Экспорт RBXMX"
-                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 16, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            🧱
+                        <select id="exportFormatMobile"
+                            style={{
+                                padding: "8px", background: "#14151f", color: "white", border: "1px solid #2e303a",
+                                borderRadius: 6, cursor: "pointer", fontSize: 12, minHeight: 40,
+                            }}>
+                            <option value="json">💾 JSON</option>
+                            <option value="rbxmx">🧱 RBXMX</option>
+                            <option value="glb">📦 GLB</option>
+                        </select>
+                        <button
+                            onClick={() => {
+                                const format = (document.getElementById('exportFormatMobile') as HTMLSelectElement)?.value;
+                                if (format === "json") exportToJSON();
+                                else if (format === "rbxmx") exportToRBXM();
+                                else if (format === "glb") exportToGLB();
+                            }}
+                            style={{
+                                padding: "10px 12px", background: "#aa3bff", color: "white", border: "1px solid #88ff99",
+                                borderRadius: 6, fontSize: 12, minHeight: 40, width: 90, display: "flex",
+                                alignItems: "center", justifyContent: "center"
+                            }} title='Экспорт'
+                        >
+                            {"<- Экспорт формата"}
                         </button>
                         <button onClick={handleImport} title="Импорт JSON"
-                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px dashed #aa3bff', borderRadius: 6, fontSize: 16, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            📂
+                            style={{ padding: '10px 12px', background: '#14151f', color: 'white', border: '1px dashed #aa3bff', borderRadius: 6, fontSize: 12, minHeight: 40, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            📂 IMP
                         </button>
                     </div>
                 </div>
@@ -334,11 +351,31 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
 
             <div style={{marginTop: 8, paddingTop: 12, borderTop: '1px solid #2e303a', display: 'flex', flexDirection: 'column', gap: 6}}>
                 <label style={{color: 'white', fontSize: 12, fontWeight: 200}}>Сохранение / загрузка</label>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 4}}>
-                    <button onClick={exportToJSON} style={{ gridRow: '1', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>💾 JSON</button>
-                    <button onClick={exportToRBXM} style={{ gridRow: '2', gridColumn: '1', padding: '8px', background: '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>🧱 RBXMX</button>
-                    <button onClick={handleImport} style={{ gridRow: '1 / span 2', gridColumn: '2', padding: '8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>📂<br/>Импорт</button>
+                <div style={{display: "flex", gap: 4}}>
+                    <select id="exportFormat" 
+                    style={{flex: 1, padding: "8px", background: "#14151f", color: "white", border: "1px solid #2e303a", 
+                        borderRadius: 4, cursor: "pointer", fontSize: 12, outline: "none"
+                    }}>
+                        <option value="json">💾 JSON</option>
+                        <option value="rbxmx">🧱 RBXMX</option>
+                        <option value="glb">📦 GLB</option>
+                    </select>
+                    <button 
+                        onClick={() => {
+                            const format = (document.getElementById('exportFormat') as HTMLSelectElement)?.value;
+                            if (format === "json") exportToJSON();
+                            else if (format === "rbxmx") exportToRBXM();
+                            else if (format === "glb") exportToGLB();
+                        }} 
+                        style={{padding: "8px 12px", background: "#aa3bff", color: "white", border: "none",
+                            borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
+                        }}                    
+                    >
+                       {"<- Экспорт формата"}
+                    </button>
                 </div>
+                <button onClick={handleImport} style={{ padding: '8px', background: '#1a1b26', color: 'white', border: '1px dashed #aa3bff', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>📂<br/>Импорт JSON</button>
+
                 <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={false} />
                 <button
                     onClick={() => user ? onOpenProjects() : onAuthClick()}

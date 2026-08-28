@@ -11,8 +11,28 @@ const client = new Client()
 export const account = new Account(client);
 export const databases = new Databases(client)
 
-export async function saveScene(userId: string, sceneName: string, sceneData: any, documentId?: string) {
+export function captureScreenScreenshot(): string | null {
+    const canvas = document.querySelector("canvas");
+    if (!canvas) return null
+
+    const tempCanvas = document.createElement("canvas");
+    const size = 200
+    tempCanvas.height = size;
+    tempCanvas.width = size;
+    const ctx = tempCanvas.getContext('2d')
+    if (!ctx) return null
+    try {
+        ctx.drawImage(canvas, 0, 0, size, size)
+        return tempCanvas.toDataURL('image/jpeg', 0.5)
+    } catch (err) {
+        console.error("Ошибка создания скриншота (возможно, проблема CORS с текстурами):", err);
+        return null;
+    }
+}
+
+export async function saveScene(userId: string, sceneName: string, sceneData: any, documentId?: string, screenshot?: string) {
     const sceneDataString = JSON.stringify(sceneData)
+    const screenshotData = screenshot || captureScreenScreenshot()
 
     if (documentId) {
         return await databases.updateDocument(
@@ -21,7 +41,8 @@ export async function saveScene(userId: string, sceneName: string, sceneData: an
             documentId, 
             {
                 scene_name: sceneName,
-                scene_data: sceneDataString
+                scene_data: sceneDataString,
+                screenshot: screenshotData
             }
         );
     } else {
@@ -32,7 +53,8 @@ export async function saveScene(userId: string, sceneName: string, sceneData: an
             {
                 scene_name: sceneName,
                 scene_data: sceneDataString,
-                user_id: userId
+                user_id: userId,
+                screenshot: screenshotData
             }
         );
     }
@@ -49,6 +71,7 @@ export async function loadScenes(userId: string) {
         id: doc.$id,
         name: doc.scene_name,
         data: JSON.parse(doc.scene_data),
+        screenshot: doc.screenshot || null,
         createdAt: doc.$createdAt,
         updatedAt: doc.$updatedAt
     }))
@@ -65,6 +88,7 @@ export async function loadScene(documentId: string) {
         id: doc.$id,
         name: doc.scene_name,
         data: JSON.parse(doc.scene_data),
+        screenshot: doc.screenshot || null,
         createdAt: doc.$createdAt,
         updatedAt: doc.$updatedAt
     }
@@ -78,5 +102,13 @@ export async function deleteScene(documentId: string) {
     );
 }
 
+export async function renameScene(documentId: string, newName: string) {
+    return await databases.updateDocument(
+        DATA_BASE,
+        COLLECTION,
+        documentId,
+        { scene_name: newName}
+    )    
+}
 
 export { client }
