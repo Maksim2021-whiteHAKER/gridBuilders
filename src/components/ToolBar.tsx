@@ -45,7 +45,13 @@ function handleImportType(acceptImport: string, importType: any ) {
                     alert("Ошибка при импорте GLB, убедитесь что 3д модель правильная");
                 }
             }); 
-        }        
+        } else if (acceptImport === '.obj') {
+            importType(file, (success: boolean) => { 
+                if (success) console.log("Формат glb успешно импортирован"); else {
+                    alert("Ошибка при импорте GLB, убедитесь что 3д модель правильная");
+                }
+            });
+        }
     };
     input.click();
 }
@@ -62,6 +68,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     const exportToGLB = useSceneStore((state) => state.exportGLB);
     const importToJSON = useSceneStore((state) => state.importJSON);
     const importToGLB = useSceneStore((state) => state.importGLB);
+    const importToOBJ = useSceneStore((state) => state.importOBJ);
 
     const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
 
@@ -253,6 +260,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         onSelect={(format) => {
                             if (format === 'json') handleImportType('.json', importToJSON);
                             else if (format === 'glb') handleImportType('.glb,.gltf', importToGLB);
+                            else if (format === 'obj') handleImportType('.obj', importToOBJ);
                         }}
                     />
                 )}
@@ -399,12 +407,14 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     }}>
                         <option value="impjson">📂 Импорт JSON</option>
                         <option value="imprbxmx">Импорт GLB</option>
+                        <option value="impobj">Импорт OBJ</option>
                     </select>
                     <button 
                         onClick={() => {
                             const format = (document.getElementById('importFormat') as HTMLSelectElement)?.value;
                             if (format === "impjson") handleImportType('.json', importToJSON);
                             else if (format === "imprbxmx") handleImportType('.glb,.gltf', importToGLB);
+                            else if (format === 'impobj') handleImportType('.obj', importToOBJ);
                         }} 
                         style={{padding: "8px 12px", background: "#aa3bff", color: "white", border: "none",
                             borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"

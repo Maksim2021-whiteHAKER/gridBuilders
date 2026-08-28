@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useSceneStore } from "../store/sceneStore";
-import { loadScene, saveScene, deleteScene, loadScenes, renameScene } from "../lib/appwrite";
+import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../lib/appwrite";
 
 export function ProjectModal({ onClose }: { onClose: () => void }) {
     const user = useAuthStore((state) => state.user);
@@ -22,7 +22,7 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
 
     useEffect(() => {
         fetchScenes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchScenes = async () => {
@@ -30,8 +30,7 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
         setError("");
         try {
             const data = await loadScenes(user.$id);
-            // Сортировка
-            const sorted = sortBy === 'date' 
+            const sorted = sortBy === 'date'
                 ? data.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                 : data.sort((a: any, b: any) => a.name.localeCompare(b.name));
             setScenes(sorted);
@@ -94,13 +93,40 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
 
     const deleteById = async (id: string) => {
         if (!confirm("Вы точно уверены? 🤔 (Обратить это действие будет невозможно)")) return;
-        
         setActionLoading(id);
         try {
             await deleteScene(id);
             await fetchScenes();
         } catch (err: any) {
             setError("Ошибка удаления сцены: " + err.message);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // ✅ Новая функция для копирования ссылки
+    const copyShareLink = async (sceneId: string) => {
+        const shareUrl = `${window.location.origin}/?view=${sceneId}`;
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            alert("Ссылка скопирована в буфер обмена!\n" + shareUrl);
+        } catch (err) {
+            setError("Не удалось скопировать ссылку");
+        }
+    };
+
+    // ✅ Новая функция для переключения статуса
+    const togglePublic = async (sceneId: string, makePublic: boolean) => {
+        setActionLoading(sceneId);
+        try {
+            await toggleScenePublic(sceneId, makePublic);
+            await fetchScenes();
+            if (makePublic) {
+                // Если открыли, сразу предлагаем скопировать
+                copyShareLink(sceneId);
+            }
+        } catch (err: any) {
+            setError("Ошибка изменения доступа: " + err.message);
         } finally {
             setActionLoading(null);
         }
@@ -131,7 +157,6 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                     </div>
                 )}
 
-                {/* Блок сохранения */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #2e303a' }}>
                     <input
                         type="text"
@@ -139,51 +164,22 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                         value={sceneName}
                         onChange={(e) => setSceneName(e.target.value)}
                         disabled={isSaving}
-                        style={{
-                            flex: 1, padding: '10px 12px', background: '#0a0b15', border: '1px solid #2e303a',
-                            borderRadius: 6, color: 'white', fontSize: 14, outline: 'none'
-                        }}
+                        style={{ flex: 1, padding: '10px 12px', background: '#0a0b15', border: '1px solid #2e303a', borderRadius: 6, color: 'white', fontSize: 14, outline: 'none' }}
                     />
                     <button
                         onClick={save}
                         disabled={isSaving}
-                        style={{
-                            padding: '10px 16px', background: isSaving ? '#7a2bb8' : '#aa3bff',
-                            color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600,
-                            cursor: isSaving ? 'wait' : 'pointer', whiteSpace: 'nowrap'
-                        }}
+                        style={{ padding: '10px 16px', background: isSaving ? '#7a2bb8' : '#aa3bff', color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: isSaving ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
                     >
                         {isSaving ? 'Сохранение...' : '💾 Сохранить'}
                     </button>
                 </div>
 
-                {/* Сортировка */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <button
-                        onClick={() => setSortBy('date')}
-                        style={{
-                            padding: '6px 12px',
-                            background: sortBy === 'date' ? '#aa3bff' : '#14151f',
-                            color: 'white', border: '1px solid #2e303a', borderRadius: 6,
-                            fontSize: 12, cursor: 'pointer'
-                        }}
-                    >
-                        📅 По дате
-                    </button>
-                    <button
-                        onClick={() => setSortBy('name')}
-                        style={{
-                            padding: '6px 12px',
-                            background: sortBy === 'name' ? '#aa3bff' : '#14151f',
-                            color: 'white', border: '1px solid #2e303a', borderRadius: 6,
-                            fontSize: 12, cursor: 'pointer'
-                        }}
-                    >
-                        🔤 По имени
-                    </button>
+                    <button onClick={() => setSortBy('date')} style={{ padding: '6px 12px', background: sortBy === 'date' ? '#aa3bff' : '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>📅 По дате</button>
+                    <button onClick={() => setSortBy('name')} style={{ padding: '6px 12px', background: sortBy === 'name' ? '#aa3bff' : '#14151f', color: 'white', border: '1px solid #2e303a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>🔤 По имени</button>
                 </div>
 
-                {/* Список проектов */}
                 <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
                     {isLoading ? (
                         <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>Загрузка проектов...</div>
@@ -192,31 +188,13 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {scenes.map((scene) => (
-                                <div key={scene.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 12,
-                                    padding: '12px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 8
-                                }}>
-                                    {/* Превью */}
+                                <div key={scene.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 8 }}>
                                     {scene.screenshot ? (
-                                        <img 
-                                            src={scene.screenshot} 
-                                            alt={scene.name}
-                                            style={{
-                                                width: 60, height: 60, objectFit: 'cover',
-                                                borderRadius: 6, border: '1px solid #2e303a'
-                                            }}
-                                        />
+                                        <img src={scene.screenshot} alt={scene.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid #2e303a' }} />
                                     ) : (
-                                        <div style={{
-                                            width: 60, height: 60, background: '#0a0b15',
-                                            borderRadius: 6, display: 'flex', alignItems: 'center',
-                                            justifyContent: 'center', color: '#6b7280', fontSize: 24
-                                        }}>
-                                            🎨
-                                        </div>
+                                        <div style={{ width: 60, height: 60, background: '#0a0b15', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 24 }}>🎨</div>
                                     )}
 
-                                    {/* Информация */}
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         {editingId === scene.id ? (
                                             <input
@@ -226,20 +204,12 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                                                 onBlur={() => handleRename(scene.id)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleRename(scene.id)}
                                                 autoFocus
-                                                style={{
-                                                    width: '100%', padding: '4px 8px',
-                                                    background: '#0a0b15', border: '1px solid #aa3bff',
-                                                    borderRadius: 4, color: 'white', fontSize: 14, outline: 'none'
-                                                }}
+                                                style={{ width: '100%', padding: '4px 8px', background: '#0a0b15', border: '1px solid #aa3bff', borderRadius: 4, color: 'white', fontSize: 14, outline: 'none' }}
                                             />
                                         ) : (
-                                            <div 
+                                            <div
                                                 onClick={() => { setEditingId(scene.id); setEditName(scene.name); }}
-                                                style={{ 
-                                                    color: '#e4e4e7', fontSize: 14, fontWeight: 600, 
-                                                    marginBottom: 4, cursor: 'pointer',
-                                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                                }}
+                                                style={{ color: '#e4e4e7', fontSize: 14, fontWeight: 600, marginBottom: 4, cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                                                 title="Нажмите для переименования"
                                             >
                                                 {scene.name}
@@ -250,30 +220,93 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                                         </div>
                                     </div>
 
-                                    {/* Кнопки */}
-                                    <div style={{ display: 'flex', gap: 8 }}>
+                                    {/* ✅ ОБНОВЛЁННЫЙ БЛОК КНОПОК */}
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         <button
                                             onClick={() => load(scene)}
                                             disabled={actionLoading === scene.id}
-                                            style={{
-                                                padding: '6px 12px', background: '#2e303a', color: '#48FF73',
-                                                border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                                cursor: actionLoading === scene.id ? 'wait' : 'pointer'
-                                            }}
+                                            style={{ padding: '6px 10px', background: '#2e303a', color: '#48FF73', border: 'none', borderRadius: 6, fontSize: 16, cursor: actionLoading === scene.id ? 'wait' : 'pointer' }}
+                                            title="Загрузить"
                                         >
-                                            {actionLoading === scene.id ? '...' : '📂 Загрузить'}
+                                            {actionLoading === scene.id ? '...' : '📂'}
                                         </button>
+                                        
                                         <button
                                             onClick={() => deleteById(scene.id)}
                                             disabled={actionLoading === scene.id}
-                                            style={{
-                                                padding: '6px 12px', background: '#2e303a', color: '#FF5F56',
-                                                border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                                cursor: actionLoading === scene.id ? 'wait' : 'pointer'
-                                            }}
+                                            style={{ padding: '6px 10px', background: '#2e303a', color: '#FF5F56', border: 'none', borderRadius: 6, fontSize: 16, cursor: actionLoading === scene.id ? 'wait' : 'pointer' }}
+                                            title="Удалить"
                                         >
                                             {actionLoading === scene.id ? '...' : '🗑️'}
                                         </button>
+
+                                        {/* Логика отображения кнопок доступа */}
+                                        {scene.isPublic ? (
+                                            <>
+                                                {/* Кнопка статуса (закрывает проект) */}
+                                                <button
+                                                    onClick={() => togglePublic(scene.id, false)}
+                                                    disabled={actionLoading === scene.id}
+                                                    style={{
+                                                        padding: '6px 10px',
+                                                        background: '#48FF73',
+                                                        color: '#0a0b15',
+                                                        border: 'none',
+                                                        borderRadius: 6,
+                                                        fontSize: 12,
+                                                        fontWeight: 600,
+                                                        cursor: actionLoading === scene.id ? 'wait' : 'pointer',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                    title="Сделать проект приватным"
+                                                >
+                                                    {actionLoading === scene.id ? '...' : '🌐 Открыто'}
+                                                </button>
+                                                
+                                                {/* Отдельная кнопка только для копирования */}
+                                                <button
+                                                    onClick={() => copyShareLink(scene.id)}
+                                                    disabled={actionLoading === scene.id}
+                                                    style={{
+                                                        padding: '6px 10px',
+                                                        background: '#14151f',
+                                                        color: '#48FF73',
+                                                        border: '1px solid #48FF73',
+                                                        borderRadius: 6,
+                                                        fontSize: 16,
+                                                        cursor: actionLoading === scene.id ? 'wait' : 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        width: 36,
+                                                        height: 32
+                                                    }}
+                                                    title="Скопировать публичную ссылку"
+                                                >
+                                                    🔗
+                                                </button>
+                                            </>
+                                        ) : (
+                                            /* Если закрыто - только одна кнопка */
+                                            <button
+                                                onClick={() => togglePublic(scene.id, true)}
+                                                disabled={actionLoading === scene.id}
+                                                style={{
+                                                    padding: '6px 10px',
+                                                    background: '#2e303a',
+                                                    color: '#9ca3af',
+                                                    border: 'none',
+                                                    borderRadius: 6,
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    cursor: actionLoading === scene.id ? 'wait' : 'pointer',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                                title="Сделать проект публичным"
+                                            >
+                                                {actionLoading === scene.id ? '...' : '🔒 Закрыто'}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

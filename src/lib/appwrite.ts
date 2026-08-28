@@ -111,4 +111,35 @@ export async function renameScene(documentId: string, newName: string) {
     )    
 }
 
+export async function toggleScenePublic(documentId: string, isPublic: boolean) {
+    const permissions = isPublic ? ['read(any)'] : [];
+
+    return await databases.updateDocument(
+        DATA_BASE,
+        COLLECTION,
+        documentId,
+        { isPublic: isPublic},
+        permissions
+    )
+}
+
+export async function getPublicScene(documentId: string) {
+    const doc = await databases.getDocument(
+        DATA_BASE, COLLECTION,
+        documentId
+    );
+
+    if (!doc.is_public) {
+        throw new Error("Эта сцена не публична");
+    }
+
+    return {
+        id: doc.$id,
+        name: doc.scene_name,
+        data: JSON.parse(doc.scene_data),
+        screenshot: doc.screenshot || null,
+        isPublic: doc.is_public
+    }
+}
+
 export { client }

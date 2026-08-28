@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 type Mode = 'export' | 'import';
-type Format = 'json' | 'rbxmx' | 'glb';
+type Format = 'json' | 'rbxmx' | 'glb' | 'obj';
 
 interface Props {
     mode: Mode;
@@ -21,7 +21,8 @@ export function ExportImportModal({ mode, onClose, onSelect }: Props) {
         ]
         : [
             { value: 'json' as Format, label: '📂 JSON', desc: 'Текстовый формат' },
-            { value: 'glb' as Format, label: '📦 GLB', desc: '3D модель' }
+            { value: 'glb' as Format, label: '📦 GLB', desc: '3D модель' },
+            { value: 'obj' as Format, label: '📐 OBJ', desc: 'Стандартная 3D модель' }
         ];
 
     const handleConfirm = () => {

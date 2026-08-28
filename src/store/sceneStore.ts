@@ -4,6 +4,7 @@ import { version } from "../../package.json"
 import { exportToRoblox } from "../utils/exportToRBXM";
 import { exportToGLB } from "../utils/exportToGLB";
 import { importFromGLB as importGLBUtils } from "../utils/importFromGLB";
+import { importFromOBJ as importOBJUtils } from "../utils/importFromOBJ";
 import * as THREE from 'three'
 
 export interface SceneObject {
@@ -41,6 +42,7 @@ interface SceneStore extends SceneState {
     controls: any,
     camera: THREE.Camera | null,
     lastSaved: number | null,
+    rawMeshes: THREE.Object3D[],
 
     setCamera: (camera: THREE.Camera | null) => void
     setControls: (controls: any) => void,   
@@ -69,6 +71,7 @@ interface SceneStore extends SceneState {
     exportGLB: () => void,
     importJSON: (jsonString: string) => boolean,
     importGLB: (file: File, callback: (success: boolean) => void) => void; 
+    importOBJ: (file: File, callback: (success: boolean) => void) => void; 
         
     // Undo/Redo
     undo: () => void,
@@ -118,6 +121,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     past: [],
     future: [],   
     lastSaved: null,
+    rawMeshes: [],
 
     controls: null,
     camera: null,
@@ -365,6 +369,28 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
             }
         )
     },
+
+    importOBJ: (file: File, callback: (success: boolean) => void) => {
+        const state = get();
+        importOBJUtils(
+            file, (objects, rawGroup) => {
+                set({
+                    past: [...state.past.slice(-49), getCurrentState(state)],
+                    future: [],
+                    objects: [...state.objects, ...objects],
+                    rawMeshes: [...state.rawMeshes, rawGroup],
+                    selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
+                })
+                get().saveToLocalStorage();
+                callback(true);
+            }, (error) => {
+                console.error(error);
+                alert(error)
+                callback(false)
+            }
+        )
+    },
+
 
     undo: () => {
         const state = get()
