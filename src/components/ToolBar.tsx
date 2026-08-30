@@ -47,8 +47,8 @@ function handleImportType(acceptImport: string, importType: any ) {
             }); 
         } else if (acceptImport === '.obj') {
             importType(file, (success: boolean) => { 
-                if (success) console.log("Формат glb успешно импортирован"); else {
-                    alert("Ошибка при импорте GLB, убедитесь что 3д модель правильная");
+                if (success) console.log("Формат obj успешно импортирован"); else {
+                    alert("Ошибка при импорте OBJ, убедитесь что 3д модель правильная");
                 }
             });
         }
@@ -117,7 +117,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
                             style={{
                                 flex: 1, padding: '12px', background: '#14151f', color: 'white', border: '1px solid #2e303a',
-                                borderRadius: 8, fontSize: 14, minHeight: 44
+                                borderRadius: 8, fontSize: 14, minHeight: 46
                             }}>
                             {OBJECT_TYPES.map((type) => (
                                 <option key={type.value} value={type.value}>

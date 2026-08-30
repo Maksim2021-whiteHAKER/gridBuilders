@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useSceneStore } from '../store/sceneStore'
 import { useDeviceType } from '../hooks/useDeviceType';
+import { GradientPicker } from './GradientPicker';
+import { createGradientPreview } from '../utils/createGradientTexture';
 
 export function PropertiesPanel() {
     const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
@@ -11,6 +13,7 @@ export function PropertiesPanel() {
     const isSmall = deviceType === 'mobile' || deviceType === 'tablet';    
 
     const [tempColor, setTempColor] = useState<string | null>(null)
+    const [stepValue, setStepValue] = useState(10);
    
     useEffect(() => {
         setTempColor(null);
@@ -253,7 +256,7 @@ export function PropertiesPanel() {
 
                     {/* Карточка: Вращение */}
                     <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 6,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start'
                     }}>
                         <label style={labelStyleMobile}>Вращение                            
@@ -293,44 +296,130 @@ export function PropertiesPanel() {
 
                     {/* Карточка: Цвет и Материалы */}
                     <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        minWidth: firstObj.useGradient ? 480 : 380, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
                     }}>
-                        <div>
-                            <span style={labelStyleMobile}>Цвет
-                                <span style={{ marginLeft: "10px", gap: 8}}>
-                                    <input type="color" value={displayColor} 
-                                    onChange={(e) => handleColorChange(e.target.value)}
-                                    onMouseUp={() => handleColorFinalChange(displayColor)} 
-                                    style={{width: "30px", height: "30px", border: "none", borderRadius: 8, cursor: "pointer", background: "transparent"}}/>
-                                    <input type="text" value={displayColor}
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <label style={labelStyleMobile}>Цвет</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: false }))}
+                                    style={{
+                                        flex: 0, padding: "8px", background: !firstObj.useGradient ? "#aa3bff" : "#14151f",
+                                        color: "white", border: "1px solid #2e303a", borderRadius: 4,
+                                        fontSize: 12, fontWeight: 600
+                                    }}>
+                                    Сплошной
+                                </button>
+                                <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: true }))}
+                                    style={{
+                                        flex: 0, padding: "8px", background: firstObj.useGradient ? "#aa3bff" : "#14151f",
+                                        color: "white", border: "1px solid #2e303a", borderRadius: 4,
+                                        fontSize: 12, fontWeight: 600
+                                    }}>
+                                    Градиент
+                                </button>
+                            </div>
+                            {!firstObj.useGradient ? (
+                                <div style={{display: "flex", gap: 6, alignItems: "center", marginRight: "auto"}}>
+                                    <input type="color" value={firstObj.color}
                                     onChange={(e) => handleColorChange(e.target.value)}
                                     onMouseUp={() => handleColorFinalChange(displayColor)}
-                                    style={{position: "relative", marginLeft: "5px", width: "45%", fontSize: "17px", borderRadius: "15px", 
-                                    background: "#0a0b15", border: "1px solid #2e303a", color: "#e4e4e7" }}/>
-                                </span>
-                            </span>
-                            <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                                <span style={{...labelStyleMobile, position: "relative"}}>Текстура</span>
-                                <img src={firstObj.textureUrl}
-                                    alt="нет"
-                                    style={{ width: "17%", height: "17%", objectFit: "cover", display: "block" }} 
-                                />
-                                <button onClick={() => openChoosingFiles()}
-                                style={{ width: "100%", padding: "4px", background: "#8007bd", color: "#ffffff",
-                                    borderRadius: "30px", fontSize: "11px"
-                                }}>{firstObj.textureUrl ? '🔄Замена текстуры' : '📁Загрузка текстуры'}                                    
-                                </button>
-                                <button onClick={() => selectedObjects.forEach((obj) => {
-                                    updateObj(obj.id, { textureUrl: undefined });
-                                })} style={{position: "absolute", top: 62, right: -118, height: "15px",
-                                    color: "#ffffff", fontSize: 15, fontWeight: 1000, 
-                                    background: "rgba(0, 0, 0, 0.75)", borderRadius: "75%"
-                                 }}>{firstObj.textureUrl ? "×" : ""}</button>
-                            </div>
+                                    style={{gridColumn: 2, width: 30, height: 30, border: "none", borderRadius: 8, 
+                                    background: "none"}} />
+                                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
+                                    style={{background: "#0a0b15", border: "1px solid #2e303a", color: "#e4e4e7", padding: "4px 6px", borderRadius: 8,
+                                    fontSize: 14, width: 110 }} />
+                                </div>
+                            ) : (
+                                <div style={{marginRight: "auto", marginLeft: "auto", display: "flex", alignItems: "center", gap: 4}}>
+                                    <div style={{width: 110, height: 24, borderRadius: 4,
+                                        background: `url(${createGradientPreview({
+                                            colors: firstObj.gradientColors || ["#ffffff", "#000000"],
+                                            type: firstObj.gradientType || 'linear',
+                                            angle: firstObj.gradientAngle || 0
+                                        })})`,
+                                        backgroundSize: "cover", border: "1px solid #2e303a"                                         
+                                    }} />
+                                    <div>
+                                        <label style={{ color: 'lightgreen', fontSize: 12, display: 'flex', marginLeft: 4, textAlign: "center" }}>
+                                            Угол: {firstObj.gradientAngle}°
+                                        </label>
+                                    </div>
+                                    <button 
+                                        style={{ width: "25px", height: "25px", background: "#00ff56", border: "1px solid #2e303a", borderRadius: 8 }}
+                                        onClick={() => {
+                                            if (firstObj.gradientAngle !== undefined) {
+                                                const delta = stepValue
+                                                const newAngle = Math.min(360, Math.max(0, firstObj.gradientAngle + delta))
+                                                selectedObjects.forEach((obj) => updateObj(obj.id, { gradientAngle: newAngle }))
+                                            }
+                                        }}
+                                    >➕
+                                    </button>
+                                    <button style={{ width: "25px", height: "25px", background: "#ff0022", border: "1px solid #2e303a", borderRadius: 8 }}
+                                    onClick={() => {
+                                        if (firstObj.gradientAngle !== undefined) {
+                                            const delta = stepValue
+                                            const newAngle = Math.max(0, Math.min(360, firstObj.gradientAngle - delta))
+                                            selectedObjects.forEach((obj) => updateObj(obj.id, { gradientAngle: newAngle }))
+                                        }
+                                    }}
+                                    >➖
+                                    </button>
+                                    <input id='inputAngle' type="number" title='Шаг изменения угла' min={1} max={100}
+                                    value={stepValue} onChange={(e) => {
+                                        const parsed = parseInt(e.target.value, 10);
+                                        setStepValue(isNaN(parsed) ? 0 : parsed)
+                                    }}
+                                        style={{width: "35px", border: "1px solid #2e303a", borderRadius: 12,
+                                            padding: "0 4px", textAlign: "center", backgroundColor: "#1e1027",
+                                            color: "white", fontSize: 12
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        { firstObj.useGradient && (
+                            <GradientPicker
+                                useGradient={true}
+                                gradientColors={firstObj.gradientColors || ["#ffffff", "#000000"]}
+                                gradientType={firstObj.gradientType || 'linear'}
+                                gradientAngle={firstObj.gradientAngle || 0}
+                                onChange={(updates) => {
+                                    selectedObjects.forEach((obj) => updateObj(obj.id, updates))
+                                }}
+                            />
+                        )}
+                    </div>
+                    <div style={{
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 10,
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
+                    }}>
+                        <div style={{display: "grid", gridTemplateColumns: "1fr 120px", gridTemplateRows: "1fr 60px", gap: 5, width: "100%", height: "100%",
+                        }}>  
+                        <div style={{ gridRow: "1", alignItems: "center", gap: 2 }}>
+                            <label style={{ ...labelStyleMobile, position: "relative", marginBottom: 0 }}>Текстура</label>
+                        </div>
+                            <img src={firstObj.textureUrl}
+                                style={{gridRow: "2", width: 100, height: 35, objectFit: "cover", borderRadius: 25 }}
+                            />    
+
+                            <button onClick={() => selectedObjects.forEach((obj) => {
+                                updateObj(obj.id, { textureUrl: undefined });
+                            })} style={{
+                                gridRow: "1 / span 3", gridColumn: "2", width: "100%", height: 26, background: "#ff5F56", color: "white",
+                                borderRadius: "30px", marginTop: 10, display: !firstObj.textureUrl ? "none" : "grid",
+                            }}>{"Удалить текстуру"}
+                            </button>
+
+                            <button onClick={() => openChoosingFiles()}
+                                style={{
+                                    gridRow: "2", gridColumn: "2", width: "100%", height: 26, background: "#8007bd", color: "#ffffff", 
+                                    borderRadius: "30px", fontSize: "12px", marginTop: 22
+                                }}>{firstObj.textureUrl ? '🔄Замена текстуры' : '📁Загрузка текстуры'}
+                            </button>
                         </div>
                     </div>
-
                     {firstObj.type !== 'text' && (
                         <div style={{
                             minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
@@ -475,17 +564,44 @@ export function PropertiesPanel() {
 
             {/* Цвет */}
             <div>
-                <label style={labelStyle}>
-                    Цвет {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
-                        style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
-                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
-                        style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }} />
+                <label style={labelStyle}> Цвет {isMultiObj && '(применяется ко всем)'}</label>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: false }))}
+                        style={{
+                            flex: 1, padding: "8px", background: !firstObj.useGradient ? "#aa3bff" : "#14151f",
+                            color: "white", border: "1px solid #2e303a", borderRadius: 4,
+                            cursor: "pointer", fontSize: 12, fontWeight: 600
+                        }}>
+                        Сплошной
+                    </button>
+                    <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: true }))}
+                        style={{
+                            flex: 1, padding: "8px", background: firstObj.useGradient ? "#aa3bff" : "#14151f",
+                            color: "white", border: "1px solid #2e303a", borderRadius: 4,
+                            cursor: "pointer", fontSize: 12, fontWeight: 600
+                        }}>
+                        Градиент
+                    </button>
                 </div>
+                    {!firstObj.useGradient ? (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
+                                style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
+                            <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
+                                style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }} />
+                        </div>
+                    ) : (
+                    <GradientPicker
+                        useGradient={true}
+                        gradientColors={firstObj.gradientColors || ["#ffffff", "#000000"]}
+                        gradientType={firstObj.gradientType || 'linear'}
+                        gradientAngle={firstObj.gradientAngle || 0}
+                        onChange={(updates) => { 
+                            selectedObjects.forEach((obj) => updateObj(obj.id, updates))
+                        }}
+                    />
+                )}
             </div>
-
             {/* ✅ Текстура */}
             <div>
                 <label style={labelStyle}>

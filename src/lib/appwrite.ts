@@ -42,7 +42,8 @@ export async function saveScene(userId: string, sceneName: string, sceneData: an
             {
                 scene_name: sceneName,
                 scene_data: sceneDataString,
-                screenshot: screenshotData
+                screenshot: screenshotData,
+                is_public: false
             }
         );
     } else {
@@ -54,7 +55,8 @@ export async function saveScene(userId: string, sceneName: string, sceneData: an
                 scene_name: sceneName,
                 scene_data: sceneDataString,
                 user_id: userId,
-                screenshot: screenshotData
+                screenshot: screenshotData,
+                is_public: false
             }
         );
     }

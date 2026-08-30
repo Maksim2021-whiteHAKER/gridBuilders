@@ -26,13 +26,17 @@ export function importFromOBJ(
                         id: generatedId(),
                         type: 'box',
                         position: [mesh.position.x, mesh.position.y, mesh.position.z],
-                        rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z], // ✅ Исправил: было rotation.z везде
+                        rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z],
                         scale: [mesh.scale.x, mesh.scale.y, mesh.scale.z],
                         color: '#bf8ff3',
                         opacity: 1.0,
                         metalness: 0.0,
                         roughness: 0.6,
                         wireframe: false,
+                        useGradient: false,
+                        gradientColors: ["#ffffff", "#000001"],
+                        gradientType: 'linear',
+                        gradientAngle: 0,
                     }
                     objects.push(obj)
                 }                    

@@ -71,7 +71,7 @@ function convertMeshToObject(mesh: THREE.Mesh): SceneObject | null {
     let wireframe = false;
 
     if (material) {
-        if (material.color) color = "#" + material.color.getHexString;
+        if (material.color) color = "#" + material.color.getHexString();
         if (material.opacity !== undefined) opacity = material.opacity;
         if (material.metalness !== undefined) metalness = material.metalness;
         if (material.roughness !== undefined) roughness = material.roughness;
@@ -93,5 +93,9 @@ function convertMeshToObject(mesh: THREE.Mesh): SceneObject | null {
         metalness,
         roughness,
         wireframe,
+        useGradient: false,
+        gradientColors: ["#ffffff", "#000001"],
+        gradientType: 'linear',
+        gradientAngle: 0,
     };
 }

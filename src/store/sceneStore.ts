@@ -14,6 +14,12 @@ export interface SceneObject {
     rotation: [number, number, number],
     scale: [number, number, number],
     color: string,
+
+    useGradient?: boolean,
+    gradientColors?: string[],
+    gradientType?: 'linear' | 'radial',
+    gradientAngle?: number,
+
     opacity: number,
     metalness: number,
     roughness: number,
@@ -143,7 +149,11 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 text: obj.type === 'text' ? (obj.text || "Текст") : undefined,
                 fontSize: obj.type === 'text' ? (obj.fontSize || 0.5) : undefined,
                 maxWidth: obj.type === 'text' ? 12 : undefined,
-                textAllign: obj.type === 'text' ? 'center' : undefined
+                textAllign: obj.type === 'text' ? 'center' : undefined,
+                useGradient: false,
+                gradientColors: ["#ffffff", "#000001"],
+                gradientType: 'linear' as const,
+                gradientAngle: 0,
             }],
             selectedIds: [obj.id]
         })

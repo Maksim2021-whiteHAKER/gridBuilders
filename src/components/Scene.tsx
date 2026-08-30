@@ -8,6 +8,7 @@ import { GroupTransformControls } from './GroupTransformControls.tsx'
 import * as THREE from 'three'
 import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
+import { createGradientTexture } from '../utils/createGradientTexture.ts'
 
 function CameraSaver() {
     const { camera } = useThree();
@@ -34,12 +35,33 @@ function ControlsSaver() {
 }
 
 function ObjectMaterial({obj, isSelected} : {obj:any, isSelected:boolean}) {
-    const texture = obj.textureUrl ? useLoader(THREE.TextureLoader, obj.textureUrl) as THREE.Texture : undefined;   
+
+    let textureSource: string | undefined = undefined
+    let shouldUseTexture = false;
+
+    if (obj.useGradient && obj.gradientColors && obj.gradientColors.length >= 2) {
+        textureSource = createGradientTexture({
+            colors: obj.gradientColors,
+            type: obj.gradientType || 'linear',
+            angle: obj.gradientAngle || 0,
+            size: 512
+        })
+        shouldUseTexture = true
+    } else if (obj.textureUrl && !obj.useGradient) {
+        textureSource = obj.textureUrl;
+        shouldUseTexture = true;
+    }
     
+    const texture = shouldUseTexture && textureSource
+        ? useLoader(THREE.TextureLoader, textureSource) as THREE.Texture 
+        : null;      
+
+    let finalColor = obj.useGradient ? "#ffffff" : obj.color;
+
     return (
         <>
             <meshStandardMaterial
-                color={obj.color}
+                color={finalColor}
                 map={texture}
                 transparent={obj.opacity < 1}
                 opacity={obj.opacity}
@@ -50,6 +72,7 @@ function ObjectMaterial({obj, isSelected} : {obj:any, isSelected:boolean}) {
                 alphaTest={obj.opacity < 1 ? 0.01 : 0} 
             />
             {isSelected && (<Outlines color="#aa3bff" thickness={2} angle={0.6} />)}
+            
         </>
     )
 }
@@ -71,7 +94,7 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
     }
 
     return(
-        <mesh ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
+        <mesh key={`mesh-${obj.id}-${obj.useGradient ? 'grad' : 'solid'}`} ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
             onClick={(e) => {
             e.stopPropagation()
             const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
