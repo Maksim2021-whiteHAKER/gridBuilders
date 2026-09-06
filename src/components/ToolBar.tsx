@@ -3,8 +3,11 @@ import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
 import { useDeviceType } from '../hooks/useDeviceType';
 import { ExportImportModal } from './ExportImportModal';
+import type { Models } from 'appwrite';
 
 type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
+
+type ImportType = | ((json: string) => boolean) | ((file: File, callback: (success: boolean) => void) => void);
 
 const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
     { value: 'box', name: 'Куб', icon: '🔲' },
@@ -23,41 +26,38 @@ export function generatedId() {
     return "obj_" + Date.now() + Math.random().toString(36).substring(2, 9);
 }
 
-function handleImportType(acceptImport: string, importType: any ) {
+function handleImportType(acceptImport: string, importType: ImportType ) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = acceptImport;
     input.onchange = (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (!file) return;
-        
         if (acceptImport === '.json') {
             const reader = new FileReader();
             reader.onload = (eventRead) => {
                 const json = eventRead.target?.result as string;
-                const success = importType(json);
+                const success = (importType as (json: string) => boolean)(json);
                 if (!success) alert("Сцена не загружена, проверьте формат, он должен быть JSON");
             };
             reader.readAsText(file);
-        } else if (acceptImport === '.glb,.gltf') { 
-            importType(file, (success: boolean) => { 
-                if (success) console.log("Формат glb успешно импортирован"); else {
-                    alert("Ошибка при импорте GLB, убедитесь что 3д модель правильная");
+        } else if (acceptImport === '.glb,.gltf' || acceptImport === 'obj') { 
+            (importType as (file: File, callback: (success: boolean) => void) => void) (
+                file, (success) => {
+                    if (success) console.log("Формат glb успешно импортирован"); 
+                    else { 
+                        alert("Ошибка при импорте GLB, убедитесь что 3д модель правильная");
+                    }
                 }
-            }); 
-        } else if (acceptImport === '.obj') {
-            importType(file, (success: boolean) => { 
-                if (success) console.log("Формат obj успешно импортирован"); else {
-                    alert("Ошибка при импорте OBJ, убедитесь что 3д модель правильная");
-                }
-            });
-        }
+            )
+        }; 
+         
     };
     input.click();
 }
 
 export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
-    onAuthClick: () => void, user: any, onSignOut: () => void, onOpenProjects: () => void
+    onAuthClick: () => void, user: Models.User<Models.Preferences> | null, onSignOut: () => void, onOpenProjects: () => void
 }){
     const camera = useSceneStore((state) => state.camera);
     const controls = useSceneStore((state) => state.controls);
@@ -441,7 +441,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     )
 }
 
-function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => void, user: any, onSignOut: () => void, isSmall: boolean}) {
+function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => void, user: Models.User<Models.Preferences> | null, onSignOut: () => void, isSmall: boolean}) {
     return (
     <div style={{ marginTop: isSmall ? 8 : 12, paddingTop: isSmall ? 8 : 12, borderTop: '1px solid #2e303a' }}>
         {user ? (

@@ -1,0 +1,125 @@
+.input-style {
+    width: 100%;
+    padding: 6px 8px;
+    background: #14151f;
+    border: 1px solid #2e303a;
+    border-radius: 4px;
+    color: #e4e4e7;
+    font-size: 12px;
+}
+
+.labelStyle {
+    display: block;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 8px
+}
+
+.input-styleMobile {
+    width: 100%;
+    padding: 10px;
+    background: #0a0b15;
+    border: 1px solid #2e303a;
+    border-radius: 8px;
+    color: #e4e4e7;
+    font-size: 14px
+}
+
+.labelStyleMobile {
+    display: block;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 8px
+}
+
+.btnMobileStyle {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #2e303a;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    padding: 0;
+    line-height: 1
+}
+
+.btn-plus {
+    background: #00ff56;
+}
+
+.btn-minus {
+    background: #ff0022;
+}
+
+.controlsContainerMobileStyle {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center
+}
+
+.gradient-shadowStyle {
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    z-index: 10;
+}
+
+.arrowIndicator {
+    position: absolute;
+    top: 90%;
+    transform: translateY(-50%);
+    color: #ff8877;
+    font-size: 40px;
+    animation: pulse 2s infinite;
+    z-index: 1000;
+}
+
+.scroll-fade-container {
+    max-height: 130px;
+    position: relative;
+    display: flex;
+    border-radius: 15%;
+    overflow-x: auto;
+    gap: 12px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.scroll-fade-container::-webkit-scrollbar {
+    display: none;
+}
+
+.scroll-fade-container::before,
+.scroll-fade-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.scroll-fade-container::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(20, 21, 31, 0.98), transparent);
+    border-radius: 30% 0 0 30%;
+}
+
+.scroll-fade-container::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(20, 21, 31, 0.98), transparent);
+    border-radius: 0 30% 30% 0;
+}
+
+.scroll-fade-container::-webkit-scrollbar {
+    display: none;
+}

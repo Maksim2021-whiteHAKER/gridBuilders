@@ -47,8 +47,8 @@ export function importFromOBJ(
             } else {
                 onError("В OBJ файле не найдено 3D-Моделей")
             }
-        } catch (e: any) { 
-            onError("Ошибка при чтении OBJ файла: " + e.message) 
+        } catch (error: unknown) {
+            if (error instanceof Error) onError("Ошибка при чтении OBJ файла: " + error.message) 
         }
     };
 

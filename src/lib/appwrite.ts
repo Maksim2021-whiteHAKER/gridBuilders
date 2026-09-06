@@ -11,6 +11,12 @@ const client = new Client()
 export const account = new Account(client);
 export const databases = new Databases(client)
 
+function normalized(raw: string) {
+    const parsed = raw ? JSON.parse(raw) : [];
+    const objects = Array.isArray(parsed) ? parsed : (parsed?.objects ?? [])
+    return objects;
+}
+
 export function captureScreenScreenshot(): string | null {
     const canvas = document.querySelector("canvas");
     if (!canvas) return null
@@ -30,7 +36,7 @@ export function captureScreenScreenshot(): string | null {
     }
 }
 
-export async function saveScene(userId: string, sceneName: string, sceneData: any, documentId?: string, screenshot?: string) {
+export async function saveScene(userId: string, sceneName: string, sceneData: Record<string, unknown> | unknown[], documentId?: string, screenshot?: string, is_public = false) {
     const sceneDataString = JSON.stringify(sceneData)
     const screenshotData = screenshot || captureScreenScreenshot()
 
@@ -43,7 +49,7 @@ export async function saveScene(userId: string, sceneName: string, sceneData: an
                 scene_name: sceneName,
                 scene_data: sceneDataString,
                 screenshot: screenshotData,
-                is_public: false
+                is_public: is_public
             }
         );
     } else {
@@ -56,7 +62,7 @@ export async function saveScene(userId: string, sceneName: string, sceneData: an
                 scene_data: sceneDataString,
                 user_id: userId,
                 screenshot: screenshotData,
-                is_public: false
+                is_public: is_public
             }
         );
     }
@@ -69,27 +75,31 @@ export async function loadScenes(userId: string) {
         [Query.equal('user_id', userId)]
     );
 
-    return response.documents.map((doc) => ({
-        id: doc.$id,
-        name: doc.scene_name,
-        data: JSON.parse(doc.scene_data),
-        screenshot: doc.screenshot || null,
-        createdAt: doc.$createdAt,
-        updatedAt: doc.$updatedAt
-    }))
+    return response.documents.map((doc) => {
+        const objects = normalized(doc.scene_data)
+
+        return {
+            id: doc.$id,
+            name: doc.scene_name,
+            data: objects,
+            screenshot: doc.screenshot || null,
+            createdAt: doc.$createdAt,
+            updatedAt: doc.$updatedAt,
+            isPublic: doc.is_public === true,
+        }
+    })
 }
 
 export async function loadScene(documentId: string) {
     const doc = await databases.getDocument(
-        DATA_BASE,
-        COLLECTION,
-        documentId
+        DATA_BASE, COLLECTION, documentId
     );
-    
+    const objects = normalized(doc.scene_data)
+
     return {
         id: doc.$id,
         name: doc.scene_name,
-        data: JSON.parse(doc.scene_data),
+        data: objects,
         screenshot: doc.screenshot || null,
         createdAt: doc.$createdAt,
         updatedAt: doc.$updatedAt
@@ -113,6 +123,11 @@ export async function renameScene(documentId: string, newName: string) {
     )    
 }
 
+/**
+ * Включает/выключает публичный доступ к сцене.
+ * - isPublic: флаг для UI (отображает «Открыто»/«Закрыто»).
+ * - permissions: реальные права доступа к документу в Appwrite.
+ */
 export async function toggleScenePublic(documentId: string, isPublic: boolean) {
     const permissions = isPublic ? ['read(any)'] : [];
 
@@ -135,10 +150,12 @@ export async function getPublicScene(documentId: string) {
         throw new Error("Эта сцена не публична");
     }
 
+    const objects = normalized(doc.scene_data)
+
     return {
         id: doc.$id,
         name: doc.scene_name,
-        data: JSON.parse(doc.scene_data),
+        data: objects,
         screenshot: doc.screenshot || null,
         isPublic: doc.is_public
     }

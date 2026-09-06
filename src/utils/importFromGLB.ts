@@ -36,8 +36,8 @@ export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => 
                     onError("Ошибка при чтении GLB файла: "+error.message)
                 }
             )
-        } catch (e: any) { 
-            onError("Ошибка при загрузке файла"+e.message)
+        } catch (error: unknown) {
+            if (error instanceof Error) onError("Ошибка при загрузке файла" + error.message)
         }
     };
 
@@ -55,11 +55,11 @@ function convertMeshToObject(mesh: THREE.Mesh): SceneObject | null {
     if (geometry.type === 'BoxGeometry') type = 'box';
     else if (geometry.type === 'SphereGeometry') type = 'sphere';
     else if (geometry.type === 'CylinderGeometry') type = 'cylinder';
-    else if (geometry.type === 'ConeGeometry') {
-        const coneGeom = geometry as THREE.ConeGeometry
-
-        type = (coneGeom as any).radialSegments === 4 ? 'pyramid' : 'cone';
+    else if (geometry.type === 'ConeGeometry') {    
+        const isPyramid = (mesh.userData as { isPyramid?: boolean })?.isPyramid === true;
+        type = isPyramid ? 'pyramid' : 'cone';
     }
+  
     else if (geometry.type === 'TorusGeometry') type = 'tor';
     else type = 'box';
 

@@ -3,12 +3,13 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useSceneStore } from "../store/sceneStore";
 import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../lib/appwrite";
+import type { SceneListItem } from "../typesAppwrite";
 
 export function ProjectModal({ onClose }: { onClose: () => void }) {
     const user = useAuthStore((state) => state.user);
-    const { setObjects } = useSceneStore();
+    const { setObjects, objects } = useSceneStore();
 
-    const [scenes, setScenes] = useState<any[]>([]);
+    const [scenes, setScenes] = useState<SceneListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
     const [sceneName, setSceneName] = useState("Моя сцена");
@@ -31,11 +32,11 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
         try {
             const data = await loadScenes(user.$id);
             const sorted = sortBy === 'date'
-                ? data.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                : data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+                ? data.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                : data.sort((a, b) => a.name.localeCompare(b.name));
             setScenes(sorted);
-        } catch (err: any) {
-            setError("Ошибка загрузки списка проектов: " + err.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) setError("Ошибка загрузки списка проектов: " + error.message);
         } finally {
             setIsLoading(false);
         }
@@ -49,26 +50,26 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
         setIsSaving(true);
         setError("");
         try {
-            const currentObjects = useSceneStore.getState().objects;
+            const currentObjects = objects;
             await saveScene(user.$id, sceneName, { objects: currentObjects });
             setSceneName("Моя сцена");
             await fetchScenes();
-        } catch (err: any) {
-            setError("Ошибка сохранения: " + err.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) setError("Ошибка сохранения: " + error.message);
         } finally {
             setIsSaving(false);
         }
     };
 
-    const load = async (scene: any) => {
+    const load = async (scene: SceneListItem) => {
         setActionLoading(scene.id);
         setError("");
         try {
             const loaded = await loadScene(scene.id);
-            setObjects(loaded.data.objects || []);
+            setObjects(loaded.data || []);
             onClose();
-        } catch (err: any) {
-            setError("Ошибка загрузки сцены: " + err.message);
+        } catch (err: unknown) {
+            if (err instanceof Error) setError("Ошибка загрузки сцены: " + err.message);
         } finally {
             setActionLoading(null);
         }
@@ -84,8 +85,8 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
             await renameScene(id, editName);
             setEditingId(null);
             await fetchScenes();
-        } catch (err: any) {
-            setError("Ошибка переименования: " + err.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) setError("Ошибка переименования: " + error.message);
         } finally {
             setActionLoading(null);
         }
@@ -97,8 +98,8 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
         try {
             await deleteScene(id);
             await fetchScenes();
-        } catch (err: any) {
-            setError("Ошибка удаления сцены: " + err.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) setError("Ошибка удаления сцены: " + error.message);
         } finally {
             setActionLoading(null);
         }
@@ -125,8 +126,8 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                 // Если открыли, сразу предлагаем скопировать
                 copyShareLink(sceneId);
             }
-        } catch (err: any) {
-            setError("Ошибка изменения доступа: " + err.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) setError("Ошибка изменения доступа: " + error.message);
         } finally {
             setActionLoading(null);
         }

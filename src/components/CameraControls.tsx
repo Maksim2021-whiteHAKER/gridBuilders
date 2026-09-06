@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import * as THREE from 'three';
 import { useSceneStore } from '../store/sceneStore';
 
@@ -10,29 +10,32 @@ export function CameraControls() {
     const [pos, setPos] = useState({ x: 0, y: 0, z: 0 });
     const [rot, setRot] = useState({ x: 0, y: 0, z: 0 });
 
-    useEffect(() => {
+    const [prevCamera, setPrevCamera] = useState(camera)
+
+    if (camera !== prevCamera) {
+        setPrevCamera(camera);
         if (camera) {
             setPos({ x: camera.position.x, y: camera.position.y, z: camera.position.z });
             const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-            setRot({
-                x: euler.x * (180 / Math.PI),
-                y: euler.y * (180 / Math.PI),
-                z: euler.z * (180 / Math.PI)
-            });
+            setRot({ x: euler.x * (180 / Math.PI), y: euler.y * (180 / Math.PI), z: euler.z * (180 / Math.PI) });
         }
-    }, [camera]);
+    }
 
     const handlePositionChange = (axis: 'x' | 'y' | 'z', value: number) => {
         if (!camera || !controls) return;
         const clampedValue = Math.max(-100, Math.min(100, value));
-        const delta = clampedValue - camera.position[axis];
+        const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
         
         setPos(prev => ({ ...prev, [axis]: clampedValue }));
-        camera.position[axis] = clampedValue;
-        
-        // Сдвигаем target на ту же величину, чтобы сохранить направление взгляда
-        controls.target[axis] += delta;
-        
+
+        camera.position.setComponent(axisIndex, clampedValue)
+
+        const direction = new THREE.Vector3()
+            .subVectors(controls.target, camera.position)
+            .normalize()
+        const distance = camera.position.distanceTo(controls.target)
+        controls.target.copy(camera.position).add(direction.multiplyScalar(distance));
+
         // ✅ Принудительно обновляем матрицы, чтобы OrbitControls увидел изменения
         camera.updateMatrixWorld(true);
         controls.update();
@@ -73,6 +76,23 @@ export function CameraControls() {
 
     const adjustRotation = (axis: 'x' | 'y' | 'z', delta: number) => {
         handleRotationChange(axis, rot[axis] + delta);
+    };
+
+    const reset = () => {
+        if (!camera || !controls) return;
+        
+        camera.position.set(25, 25, 25)
+        camera.lookAt(0, 0, 0)
+        controls.target.set(0, 0, 0)
+        controls.update()
+
+        setPos({ x: 25, y: 25, z: 25 });
+        const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+        setRot({
+            x: euler.x * (180 / Math.PI),
+            y: euler.y * (180 / Math.PI),
+            z: euler.z * (180 / Math.PI)
+        });
     };
 
     if (!camera) return null;
@@ -192,20 +212,7 @@ export function CameraControls() {
                     </div>
 
                     <button
-                        onClick={() => {
-                            if (!camera || !controls) return;
-                            camera.position.set(25, 25, 25);
-                            camera.lookAt(0, 0, 0);
-                            setPos({ x: 25, y: 25, z: 25 });
-                            const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-                            setRot({
-                                x: euler.x * (180 / Math.PI),
-                                y: euler.y * (180 / Math.PI),
-                                z: euler.z * (180 / Math.PI)
-                            });
-                            controls.target.set(0, 0, 0);
-                            controls.update();
-                        }}
+                        onClick={reset}
                         style={{
                             width: '100%', padding: '5px', background: '#2e303a', color: 'white', border: 'none',
                             borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, marginTop: -2,

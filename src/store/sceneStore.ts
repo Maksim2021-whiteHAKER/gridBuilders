@@ -6,6 +6,7 @@ import { exportToGLB } from "../utils/exportToGLB";
 import { importFromGLB as importGLBUtils } from "../utils/importFromGLB";
 import { importFromOBJ as importOBJUtils } from "../utils/importFromOBJ";
 import * as THREE from 'three'
+import type { OrbitControls } from "three/examples/jsm/Addons.js";
 
 export interface SceneObject {
     id: string,
@@ -45,18 +46,18 @@ interface SceneStore extends SceneState {
     // История
     past: SceneState[],
     future: SceneState[],
-    controls: any,
+    controls: OrbitControls | null,
     camera: THREE.Camera | null,
     lastSaved: number | null,
     rawMeshes: THREE.Object3D[],
 
     setCamera: (camera: THREE.Camera | null) => void
-    setControls: (controls: any) => void,   
+    setControls: (controls: OrbitControls | null) => void,   
     
     // Действия
     addObj: (obj: SceneObject) => void,
     updateObj: (id: string, updates: Partial<SceneObject>, skipHistory?: boolean) => void,
-    setObjects: (newObjects: any[]) => void,
+    setObjects: (newObjects: SceneObject[]) => void,
     deleteObj: (id: string) => void,
     clearScene: () => void,
     selectObject: (id: string ) => void,
@@ -160,7 +161,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         get().saveToLocalStorage();
     },
 
-    setObjects: (newObjects: any[]) => set({
+    setObjects: (newObjects: SceneObject[]) => set({
         objects: newObjects,
         selectedIds: [],
         past: [],
@@ -373,6 +374,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
                 get().saveToLocalStorage();
                 callback(true);
             }, (error) => {
+
                 console.error(error);
                 alert(error)
                 callback(false)

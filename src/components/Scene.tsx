@@ -1,24 +1,24 @@
 // /src/components/Scene.tsx
 import { useEffect, useState } from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
-import { OrbitControls, Grid, Line, TransformControls, Outlines, Text as Text3D } from '@react-three/drei'
+import { OrbitControls as OrbitControlsDrei, Grid, Line, TransformControls, Outlines, Text as Text3D } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
-import { useSceneStore } from '../store/sceneStore.ts'
+import { useSceneStore, type SceneObject } from '../store/sceneStore.ts'
 import { GroupTransformControls } from './GroupTransformControls.tsx'
 import * as THREE from 'three'
 import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 function CameraSaver() {
     const { camera } = useThree();
     const setCamera = useSceneStore((state) => state.setCamera)
 
     useEffect(() => {
-        if (camera) {
-            setCamera(camera)
-        }
-    }, [camera, setCamera])
+        setCamera(camera)
+    }, [camera, setCamera ])
+
     return null
 }
 
@@ -28,59 +28,75 @@ function ControlsSaver() {
 
     useEffect(() => {
         if (controls) {
-            setControls(controls)
+            setControls(controls as unknown as OrbitControls) 
         }
     }, [controls, setControls])
+
     return null
 }
 
-function ObjectMaterial({obj, isSelected} : {obj:any, isSelected:boolean}) {
-
-    let textureSource: string | undefined = undefined
-    let shouldUseTexture = false;
-
+function getTextureUrl(obj: SceneObject): string | undefined {
     if (obj.useGradient && obj.gradientColors && obj.gradientColors.length >= 2) {
-        textureSource = createGradientTexture({
+        return createGradientTexture({
             colors: obj.gradientColors,
             type: obj.gradientType || 'linear',
             angle: obj.gradientAngle || 0,
-            size: 512
+            size: 512,
         })
-        shouldUseTexture = true
     } else if (obj.textureUrl && !obj.useGradient) {
-        textureSource = obj.textureUrl;
-        shouldUseTexture = true;
+        return obj.textureUrl;
     }
-    
-    const texture = shouldUseTexture && textureSource
-        ? useLoader(THREE.TextureLoader, textureSource) as THREE.Texture 
-        : null;      
+    return undefined
+}
 
-    let finalColor = obj.useGradient ? "#ffffff" : obj.color;
+function TexturedMaterial({obj, isSelected, textureUrl} : {obj: SceneObject, isSelected: boolean, textureUrl: string}){
+    const texture = useLoader(THREE.TextureLoader, textureUrl) as THREE.Texture;
+    const finalColor = obj.useGradient ? "#ffffff" : obj.color;
 
     return (
         <>
             <meshStandardMaterial
-                color={finalColor}
-                map={texture}
-                transparent={obj.opacity < 1}
-                opacity={obj.opacity}
-                metalness={obj.metalness}
-                roughness={obj.roughness} 
-                wireframe={obj.wireframe} 
+                color={finalColor} map={texture}
+                transparent={obj.opacity < 1} opacity={obj.opacity}
+                metalness={obj.metalness} roughness={obj.roughness}
+                wireframe={obj.wireframe}
                 depthWrite={obj.opacity === 1}
-                alphaTest={obj.opacity < 1 ? 0.01 : 0} 
+                alphaTest={obj.opacity < 1 ? 0.01 : 0}
             />
-            {isSelected && (<Outlines color="#aa3bff" thickness={2} angle={0.6} />)}
-            
+            {isSelected && <Outlines color="#aa3bff" thickness={2} angle={0.6} />}
         </>
     )
 }
 
-function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
+function PlainMaterial({obj, isSelected}: {obj: SceneObject, isSelected: boolean}) {
+    return (
+        <>
+            <meshStandardMaterial
+                color={obj.color}
+                transparent={obj.opacity < 1} opacity={obj.opacity}
+                metalness={obj.metalness} roughness={obj.roughness}
+                wireframe={obj.wireframe}
+                depthWrite={obj.opacity === 1}
+                alphaTest={obj.opacity < 1 ? 0.01 : 0}
+            />
+            {isSelected && <Outlines color="#aa3bff" thickness={2} angle={0.6} />}
+        </>
+    )
+}
+
+function ObjectMaterial({obj, isSelected } : {obj: SceneObject, isSelected:boolean}) {
+    const textureUrl = getTextureUrl(obj)
+
+    if (textureUrl) {
+        return <TexturedMaterial obj={obj} isSelected={isSelected} textureUrl={textureUrl} />
+    }
+    return <PlainMaterial obj={obj} isSelected={isSelected} />
+}
+
+function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
     if (obj.type === 'text') {
         return (
-            <Text3D ref={setMesh as any} position={obj.position} rotation={obj.rotation} scale={obj.scale} 
+            <Text3D ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} 
             fontSize={obj.fontSize || 0.5} color={obj.color} anchorX="center" anchorY="middle" 
             onClick={(e) => {
                 e.stopPropagation()
@@ -116,7 +132,7 @@ function CreateObject({obj, isSelected, setMesh}:{obj:any, isSelected:boolean, s
     )
 }
 
-function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
+function SceneObject({obj, isSelected}:{obj: SceneObject, isSelected:boolean}){
     const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
     const { updateObj, transformMode, selectedIds, snapEnabled, gridSize } = useSceneStore();
     const [isTransforming, setIsTransforming] = useState(false);
@@ -124,9 +140,9 @@ function SceneObject({obj, isSelected}:{obj:any, isSelected:boolean}){
     // Синхронизация стора с mesh
     useEffect(() => {
         if (mesh && !isTransforming ) {
-            mesh.position.set(...(obj.position) as [number, number, number]);
-            mesh.rotation.set(...(obj.rotation) as [number, number, number]);
-            mesh.scale.set(...(obj.scale) as [number, number, number]);
+            mesh.position.set(obj.position[0], obj.position[1], obj.position[2]);
+            mesh.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
+            mesh.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
         }
     }, [obj.position, obj.rotation, obj.scale, isTransforming, mesh]);
 
@@ -179,7 +195,7 @@ function ClickOutsideHandle() {
             // Ищем пересечения только с объектами сцены (игнорируем системные, как гизмо)
             const meshes = scene.children.filter(
                 (child): child is THREE.Mesh => {
-                    return child.type === 'Mesh' && !(child as any).userData?.isSystemObject;
+                    return child.type === 'Mesh' && !(child as THREE.Mesh).userData?.isSystemObject;
                 }
             );
 
@@ -223,13 +239,19 @@ export function Scene_GB(){
     const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null)
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
-    useEffect(() => {
+    const [prevSaved, setPrevSaved] = useState<number | null>(lastSaved)
+    if (lastSaved !== prevSaved) {
+        setPrevSaved(lastSaved)
         if (lastSaved) {
-            setShowSavedIndicator(true);
-            const timer = setTimeout(() => setShowSavedIndicator(false), 2500);
-            return () => clearTimeout(timer);
+            setShowSavedIndicator(true)
         }
-    }, [lastSaved])
+    }
+
+    useEffect(() => {
+        if (!showSavedIndicator) return
+        const timer = setTimeout(() => setShowSavedIndicator(false), 2500);
+        return () => clearTimeout(timer);
+    }, [showSavedIndicator])
 
     const handleSelectionComplete = (newSelection: string[], isCtrl: boolean) => {
         if (newSelection.length > 0){
@@ -302,7 +324,7 @@ export function Scene_GB(){
                         />
                     )}
                 <ClickOutsideHandle />    
-                <OrbitControls makeDefault/>
+                <OrbitControlsDrei makeDefault/>
                 <KeyboardShortcuts />
                 <MarqueeSelection onMarqueeChange={setMarquee} onSelectionComplete={handleSelectionComplete} />
                 <CameraFocusAuto />

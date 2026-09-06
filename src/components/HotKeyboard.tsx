@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { useSceneStore } from "../store/sceneStore";
+import { useSceneStore, type SceneObject } from "../store/sceneStore";
 import { useThree } from "@react-three/fiber";
 import * as THREE from 'three'
 import { useDeviceType } from "../hooks/useDeviceType";
+import type { OrbitControls } from "three/examples/jsm/Addons.js";
 
-export function calculateCenter(selectedIds: string[], objects: any[]) {
+export function calculateCenter(selectedIds: string[], objects: SceneObject[]) {
     const selectedObjects = objects.filter((obj) => selectedIds.includes(obj.id));
     if (selectedObjects.length === 0) return;
 
@@ -113,7 +114,7 @@ export function KeyboardShortcuts() {
 }
 
 export function CameraFocusAuto() {
-    const controls = useThree((state) => state.controls) as any;
+    const controls = useThree((state) => state.controls) as OrbitControls | null; 
     const { selectedIds, objects } = useSceneStore();
     const deviceType = useDeviceType();
     const isSmall = deviceType === 'tablet' || deviceType === 'mobile'
@@ -123,8 +124,8 @@ export function CameraFocusAuto() {
             const timeoutId = setTimeout(() => {
                 const center = calculateCenter(selectedIds, objects);
                  if (center) {
-                    controls.target.set(center.x, center.y + 2, center.z)
-                    controls.update()
+                    controls?.target.set(center.x, center.y, center.z);
+                    controls?.update()
                  } else {
                     console.warn('[AutoFocus] Не удалось сфокусироваться: center или controls отсутствуют');
                 }

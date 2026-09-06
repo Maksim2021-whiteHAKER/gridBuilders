@@ -1,12 +1,13 @@
 // src/utils/exportToGLB.ts
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/examples/jsm/Addons.js'
+import type { SceneObject } from '../store/sceneStore';
 
-export async function exportToGLB(objects: any, scene_name: string = "scene") {
+export async function exportToGLB(objects: SceneObject[], scene_name: string = "scene") {
     const tempScene = new THREE.Scene();
     const texturePromises: Promise<void>[] = [];
 
-    objects.forEach((objData: any) => {
+    objects.forEach((objData: SceneObject) => {
         const { mesh, texturePromise } = createMeshFromData(objData)
         if (mesh) {
             tempScene.add(mesh)
@@ -60,7 +61,7 @@ export async function exportToGLB(objects: any, scene_name: string = "scene") {
     })
 }
 
-function createMeshFromData(objData: any): {mesh: THREE.Mesh | null, texturePromise?: Promise<void> } {
+function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | null, texturePromise?: Promise<void> } {
     let geometry: THREE.BufferGeometry | null = null
     const size = 512;
 
@@ -106,8 +107,9 @@ function createMeshFromData(objData: any): {mesh: THREE.Mesh | null, textureProm
                 );
             }
 
+            const colors = objData.gradientColors;
             objData.gradientColors.forEach((color: string, i: number) => {
-                const stop = objData.gradientColors.length === 1 ? 0 : i / (objData.gradientColors.length - 1);
+                const stop = colors.length === 1 ? 0 : i / (colors.length - 1);
                 grad.addColorStop(stop, color)
             });
 
@@ -119,8 +121,9 @@ function createMeshFromData(objData: any): {mesh: THREE.Mesh | null, textureProm
         material.color.set(0xffffff); // Сбрасываем цвет в белый для текстур
 
     } else if (objData.textureUrl) {
+        const url = objData.textureUrl;
         texturePromise = new Promise((resolve, reject) => {
-            new THREE.TextureLoader().load(objData.textureUrl, (loadedTex) => {
+            new THREE.TextureLoader().load(url, (loadedTex) => {
                 material.map = loadedTex
                 material.color.set(0xffffff); // Сбрасываем цвет в белый для текстур
                 resolve()

@@ -37,8 +37,8 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
                 await signUp(email, password)
             }
             onClose()
-        } catch (err: any) {
-            setError(err.message || 'Неизвестная ошибка')
+        } catch (error: unknown) {
+            if (error instanceof Error) setError(error.message || 'Неизвестная ошибка')
         } finally {
             setIsLoading(false)
         }

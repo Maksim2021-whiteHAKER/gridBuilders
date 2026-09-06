@@ -1,9 +1,116 @@
-// /scr/componetns/PropertiesPanel.tsx
+// /scr/components/PropertiesPanel.tsx
 import { useEffect, useState } from 'react';
-import { useSceneStore } from '../store/sceneStore'
+import { useSceneStore, type SceneObject } from '../store/sceneStore'
 import { useDeviceType } from '../hooks/useDeviceType';
 import { GradientPicker } from './GradientPicker';
 import { createGradientPreview } from '../utils/createGradientTexture';
+import '../PropertiesPanel.css' // расположение src\PropertiesPanel.css
+
+const isValidNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const isValidHex = (value: string): boolean => /^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/.test(value);
+
+function AxisInput({ labelname, values, onChange, colors, multi }: {
+    labelname: string; values: [number, number, number]; onChange: (i: number, v: number) => void;
+    colors: [string, string, string]; multi: boolean;
+}) {
+    return (
+        <div>
+            <label className="labelStyle" style={{ display: 'block', marginBottom: 10, fontWeight: 500 }}>
+                {multi ? `${labelname} (ко всем)` : labelname}
+                <div style={{ display: 'flex', gap: 20, marginTop: 1 }}>
+                    {['X', 'Y', 'Z'].map((axis, i) => (
+                        <span key={axis} style={{ color: colors[i], fontSize: 12, marginBottom: 2 }}>{axis}</span>
+                    ))}
+                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                {values.map((v, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                        <input
+                            type="text"
+                            step="0.1"
+                            value={isValidNumber(v) ? v.toFixed(1) : ''}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (Number.isFinite(val)) onChange(i, val);
+                            }}
+                            className="input-style"
+                            style={{
+                                width: '100%',
+                                padding: '6px',
+                                borderRadius: 4,
+                                border: '1px solid #2e303a',
+                                backgroundColor: '#14151f',
+                                color: '#e4e4e7',
+                            }}
+                        />
+                    </div>
+                ))}
+            </div>
+            </label>
+        </div>
+    );
+}
+
+function clampAngle(angle: number, delta: number, angleMinusDelta: boolean): number {
+    if (angleMinusDelta) {
+       return Math.max(0, Math.min(360, angle - delta))
+    } else {
+        return Math.min(360, Math.max(0, angle + delta))
+    }   
+}
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+    return (
+      <div
+        style={{
+          width: 40, height: 22, background: checked ? '#aa3bff' : '#2e303a',
+          borderRadius: 22, display: 'flex', alignItems: 'center',
+          padding: 2, cursor: 'pointer', transition: 'background 0.2s',
+        }}
+        onClick={() => onChange(!checked)}
+      >
+        <div
+          style={{
+            width: 16, height: 16, background: 'white',
+            borderRadius: '50%', marginLeft: checked ? 18 : 2,
+            transition: 'margin-left 0.2s',
+          }}
+        />
+      </div>
+    )
+}
+
+function openChoosingFiles(selectedObjects: SceneObject[], updateObj: (id: string, updates: Partial<SceneObject>, skipHistory?: boolean ) => void) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const textureUrl = event.target?.result as string;
+                // Применяем ко всем выделенным объектам
+                selectedObjects.forEach((obj) => {
+                    updateObj(obj.id, { textureUrl });
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    input.click();
+}
+
+function changeMaterialProp(
+    updateObj: (id: string, updates: Partial<SceneObject>) => void,
+    selectedObjects: SceneObject[],
+    firstObj: SceneObject, prop: 'opacity' | 'metalness' | 'roughness', delta: number, currentPlusDelta: boolean
+) {
+    const current = firstObj[prop];
+    const newValue = currentPlusDelta ? Math.max(0, Math.min(1, current + delta)) 
+        : Math.min(1, Math.max(0, current - delta));
+    selectedObjects.forEach((obj) => updateObj(obj.id, { [prop]: newValue }));
+} 
 
 export function PropertiesPanel() {
     const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
@@ -14,7 +121,8 @@ export function PropertiesPanel() {
 
     const [tempColor, setTempColor] = useState<string | null>(null)
     const [stepValue, setStepValue] = useState(10);
-   
+    const AXIS_COLORS: [string, string, string] = ["#ff5f56", "#48ff73", "#1948ff"]
+  
     useEffect(() => {
         setTempColor(null);
     }, [selectedIds])         
@@ -25,16 +133,10 @@ export function PropertiesPanel() {
         } else {
             return (
                 <div style={{
-                    position: 'absolute',
-                    top: 20,
-                    right: 20,
-                    width: 280,
+                    position: 'absolute', top: 20, right: 20, width: 280,
                     background: 'rgba(20, 21, 31, 0.95)',
-                    padding: 16,
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    zIndex: 1000,
-                    color: '#9ca3af',
+                    padding: 16, borderRadius: 8, border: '1px solid var(--border)',
+                    zIndex: 1000, color: '#9ca3af',
                     textAlign: 'center'
                 }}>
                     Нет выделенного объекта
@@ -44,31 +146,22 @@ export function PropertiesPanel() {
     }
 
     const isMultiObj = selectedIds.length > 1;
-    const firstObj = selectedObjects[0];
-    const displayColor = tempColor || firstObj.color;
+    const firstObj = selectedObjects[0] ?? null;
+    const displayColor = tempColor || (firstObj?.color ?? "#ffffff");
 
-    const openChoosingFiles = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const textureUrl = event.target?.result as string;
-                    // Применяем ко всем выделенным объектам
-                    selectedObjects.forEach((obj) => {
-                        updateObj(obj.id, { textureUrl });
-                    });
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
+    const getGradientPreview = () => {
+        if (!firstObj) return undefined
+        return createGradientPreview ({
+            colors: firstObj.gradientColors || ["#ffffff", "#000000"],
+            type: firstObj.gradientType || 'linear',
+            angle: firstObj.gradientAngle || 0 
+        })
     }
 
+    const gradientPreview = getGradientPreview();
+
     const handlePositionChange = (index: number, value: number) => {
+        if (!Number.isFinite(value)) return;
         selectedObjects.forEach((obj) => {
             const newPos = [...obj.position] as [number, number, number]
             newPos[index] = value
@@ -77,6 +170,7 @@ export function PropertiesPanel() {
     }
 
     const handleRotationChange = (index: number, value: number) => {
+        if (!Number.isFinite(value)) return;
         selectedObjects.forEach((obj) => {
             const newRot = [...obj.rotation] as [number, number, number]
             newRot[index] = value
@@ -85,6 +179,7 @@ export function PropertiesPanel() {
     }
 
     const handleScaleChange = (index: number, value: number) => {
+        if (!Number.isFinite(value)) return;
         selectedObjects.forEach((obj) => {
             const newScale = [...obj.scale] as [number, number, number]
             newScale[index] = value
@@ -93,98 +188,28 @@ export function PropertiesPanel() {
     }
 
     const handleColorChange = (value: string) => {
+        if (!isValidHex(value)) return
         setTempColor(value);
-        selectedObjects.forEach((obj) => {
-            updateObj(obj.id, { color: value }, true)
-        })
+        selectedObjects.forEach((obj) => { updateObj(obj.id, { color: value }, true)})
     }
 
     const handleColorFinalChange = (value: string) => {
+        if (!isValidHex(value)) return
         setTempColor(null);
-        selectedObjects.forEach((obj) => {
-            updateObj(obj.id, { color: value }, false)
-        })
+        selectedObjects.forEach((obj) => { updateObj(obj.id, { color: value }, false)})
     }
 
     const deleteAll = () => {
         selectedIds.forEach((id) => deleteObj(id))
     }
 
-    const changeMaterialProp = (prop: 'opacity' | 'metalness' | 'roughness', delta: number, positive: boolean) => {
-        const current = firstObj[prop];
-        let newValue;
-        positive === true ? newValue = Math.max(0, Math.min(1, current + delta)) : newValue = Math.min(1, Math.max(0, current - delta));
-        selectedObjects.forEach((obj) => updateObj(obj.id, {[prop]: newValue}));      
-    }
-
-    const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
-        <div
-            style={{
-                width: 40,
-                height: 22,
-                background: checked ? '#aa3bff' : '#2e303a',
-                borderRadius: 22,
-                display: 'flex',
-                alignItems: 'center',
-                padding: 2,
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-            }}
-            onClick={() => onChange(!checked)}
-        >
-            <div
-                style={{
-                    width: 16,
-                    height: 16,
-                    background: 'white',
-                    borderRadius: '50%',
-                    marginLeft: checked ? 18 : 2,
-                    transition: 'margin-left 0.2s'
-                }}
-            />
-        </div>
-    );
-
-    const inputStyle = {
-        width: '100%', padding: '6px 8px', background: "#14151f",
-        border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12
-    }
-
-    const labelStyle = {
-        display: 'block', color: '#9ca3af', fontSize: 12, fontWeight: 500, marginBottom: 8
-    }
-
-    const inputStyleMobile = {
-        width: '100%', padding: '10px', background: "#0a0b15",
-        border: '1px solid #2e303a', borderRadius: 8, color: '#e4e4e7', fontSize: 14
-    }
-
-    const labelStyleMobile = {
-        display: 'block', color: '#9ca3af', fontSize: 12, fontWeight: 600, marginBottom: 8
-    }
-
-    const btnMobileStyle = {
-        width: "24px", height: "24px", border: "none", borderRadius: 8, color: "white", 
-        fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: "center", 
-        justifyContent: "center", fontWeight: "bold", padding: 0, lineHeight: 1
-    }
-
-    const controlsContainerMobileStyle = {
-        display: 'inline-flex', gap: "8px", alignItems: 'center'
-    }
-
-    const gradientShadowStyle = {
-        top: 0, bottom: 0, width: 30, 
-        zIndex: 10, 
-    }
-
-    const arrowIndicator = {
-        top: "90%", transform: "translateY(-50%)", 
-        color: "#ff8877", fontSize: 40, zIndex: 1000, 
+    const removeTexture = () => {
+        selectedObjects.forEach((obj) => { updateObj(obj.id, { textureUrl: undefined });});
     }
 
     if (isSmall) {
-        return (
+        if (!firstObj) return null
+            return (
             <div style={{
                 position: 'fixed',
                 top: 0, left: 0, right: 0,
@@ -194,8 +219,8 @@ export function PropertiesPanel() {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
                 maxHeight: deviceType === 'tablet' ? '160px' : '130px'
             }}>
-                <div style={{position: "absolute", left: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>⬅</div>
-                <div style={{position: "absolute", right: 8, ...arrowIndicator, animation: "pulse 2s infinite"}}>➡</div>
+                <div className='arrowIndicator' style={{left: 5 }}>⬅</div>
+                <div className='arrowIndicator' style={{right: 5 }}>➡</div>
                 {/* Заголовок с кнопкой закрытия */}
                 <div style={{
                     display: 'flex', alignItems: 'center', padding: '0px 10px', 
@@ -213,65 +238,27 @@ export function PropertiesPanel() {
                 </div>
 
                 {/* Горизонтальный скролл-контейнер */}
-                <div style={{
-                    position: "relative",
-                    display: 'flex',
-                    maxHeight: '130px',
-                    overflowX: 'auto',
-                    gap: 12,
-                    padding: deviceType === 'tablet' ? '16px 20px 24px 32px' : '12px 16px 20px 16px',
-                    scrollSnapType: 'x mandatory',
-                    WebkitOverflowScrolling: 'touch', // Плавный скролл на iOS
-                    scrollbarWidth: 'none',
-                    borderRadius: '15%',
+                <div className="scroll-fade-container" style={{
+                    padding: deviceType === 'tablet' ? '16px 20px 24px 32px' : '5px 20px 1px 32px',
                 }}>
-
-                    <div style={{position: "absolute", left: 0, ...gradientShadowStyle, background: "linear-gradient(to right, (20, 21, 31, 0.98), transparent)", borderRadius: "30% 0 0 30%"}}></div>
-                    <div style={{position: "absolute", right: 0, ...gradientShadowStyle, background: "linear-gradient(to left, (20, 21, 31, 0.98), transparent)", borderRadius: "0 15% 15% 0"}}></div>
-
-                    <style>{`&::-webkit-scrollbar { display: none}`}</style>
-                    <style>{`@keyframes pulse { 0, 100% {opacity: 0.3} 
-                    50% {opacity: 0.6}}`}</style>
-                    
-                    
                     {/* Карточка: Позиция */}
                     <div style={{
-                        minWidth: deviceType === 'tablet' ? 280 : 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start'
                     }}>
-                        <label style={labelStyleMobile}>Позиция
-                            <span style={{marginLeft: '30px', color: "rgb(255, 0, 0)"}}>X</span>
-                            <span style={{marginLeft: '30px', color: "rgb(0, 255, 0)"}}>Y</span>
-                            <span style={{marginLeft: '30px', color: "rgb(0, 235, 255)"}}>Z</span>
-                            </label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            {['X', 'Y', 'Z'].map((axis, i) => (
-                                <div key={axis} style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: 11, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}></label>
-                                    <input type="text" step="0.1" value={firstObj.position[i].toFixed(1)} onChange={(e) => handlePositionChange(i, parseFloat(e.target.value))} style={inputStyleMobile} />
-                                </div>
-                            ))}
-                        </div>
+                        <AxisInput labelname="Позиция" values={firstObj.position} onChange={handlePositionChange}
+                        colors={AXIS_COLORS} multi={isMultiObj}
+                        />
                     </div>
 
                     {/* Карточка: Вращение */}
                     <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 6,
+                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start'
                     }}>
-                        <label style={labelStyleMobile}>Вращение                            
-                            <span style={{marginLeft: '30px', color: "rgb(255, 0, 0)"}}>X</span>
-                            <span style={{marginLeft: '30px', color: "rgb(0, 255, 0)"}}>Y</span>
-                            <span style={{marginLeft: '30px', color: "rgb(0, 235, 255)"}}>Z</span>
-                        </label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            {['X', 'Y', 'Z'].map((axis, i) => (
-                                <div key={axis} style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: 11, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}></label>
-                                    <input type="text" step="0.1" value={firstObj.rotation[i].toFixed(1)} onChange={(e) => handleRotationChange(i, parseFloat(e.target.value))} style={inputStyleMobile} />
-                                </div>
-                            ))}
-                        </div>
+                        <AxisInput labelname="Вращение" values={firstObj.rotation} onChange={handleRotationChange}
+                        colors={AXIS_COLORS} multi={isMultiObj}
+                        />
                     </div>
 
                     {/* Карточка: Масштаб */}
@@ -279,28 +266,19 @@ export function PropertiesPanel() {
                         minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start'
                     }}>
-                        <label style={labelStyleMobile}>Масштаб
-                            <span style={{marginLeft: '30px', color: "rgb(255, 0, 0)"}}>X</span>
-                            <span style={{marginLeft: '30px', color: "rgb(0, 255, 0)"}}>Y</span>
-                            <span style={{marginLeft: '30px', color: "rgb(0, 235, 255)"}}>Z</span>
-                        </label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            {['X', 'Y', 'Z'].map((axis, i) => (
-                                <div key={axis} style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: 11, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}></label>
-                                    <input type="text" step="0.1" value={firstObj.scale[i].toFixed(1)} onChange={(e) => handleScaleChange(i, parseFloat(e.target.value))} style={inputStyleMobile} />
-                                </div>
-                            ))}
-                        </div>
+                        <AxisInput labelname="Масштаб" values={firstObj.scale} onChange={handleScaleChange}
+                        colors={AXIS_COLORS} multi={isMultiObj}
+                        />
                     </div>
 
                     {/* Карточка: Цвет и Материалы */}
                     <div style={{
                         minWidth: firstObj.useGradient ? 480 : 380, background: '#14151f', borderRadius: 12, padding: 14,
-                        border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', 
+                        flexDirection: 'column', gap: 15
                     }}>
                         <div style={{ display: "flex", gap: 8 }}>
-                            <label style={labelStyleMobile}>Цвет</label>
+                            <label className="labelStyleMobile">Цвет</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: false }))}
                                     style={{
@@ -333,11 +311,7 @@ export function PropertiesPanel() {
                             ) : (
                                 <div style={{marginRight: "auto", marginLeft: "auto", display: "flex", alignItems: "center", gap: 4}}>
                                     <div style={{width: 110, height: 24, borderRadius: 4,
-                                        background: `url(${createGradientPreview({
-                                            colors: firstObj.gradientColors || ["#ffffff", "#000000"],
-                                            type: firstObj.gradientType || 'linear',
-                                            angle: firstObj.gradientAngle || 0
-                                        })})`,
+                                        background: gradientPreview ? `url(${gradientPreview})` : "transparent",
                                         backgroundSize: "cover", border: "1px solid #2e303a"                                         
                                     }} />
                                     <div>
@@ -345,31 +319,28 @@ export function PropertiesPanel() {
                                             Угол: {firstObj.gradientAngle}°
                                         </label>
                                     </div>
-                                    <button 
-                                        style={{ width: "25px", height: "25px", background: "#00ff56", border: "1px solid #2e303a", borderRadius: 8 }}
+                                    <button className="btnMobileStyle btn-plus"
                                         onClick={() => {
                                             if (firstObj.gradientAngle !== undefined) {
-                                                const delta = stepValue
-                                                const newAngle = Math.min(360, Math.max(0, firstObj.gradientAngle + delta))
+                                                const newAngle = clampAngle(firstObj.gradientAngle, stepValue, false) 
                                                 selectedObjects.forEach((obj) => updateObj(obj.id, { gradientAngle: newAngle }))
                                             }
                                         }}
                                     >➕
                                     </button>
-                                    <button style={{ width: "25px", height: "25px", background: "#ff0022", border: "1px solid #2e303a", borderRadius: 8 }}
+                                    <button className="btnMobileStyle btn-minus" 
                                     onClick={() => {
                                         if (firstObj.gradientAngle !== undefined) {
-                                            const delta = stepValue
-                                            const newAngle = Math.max(0, Math.min(360, firstObj.gradientAngle - delta))
+                                            const newAngle = clampAngle(firstObj.gradientAngle, stepValue, true)
                                             selectedObjects.forEach((obj) => updateObj(obj.id, { gradientAngle: newAngle }))
                                         }
                                     }}
                                     >➖
                                     </button>
-                                    <input id='inputAngle' type="number" title='Шаг изменения угла' min={1} max={100}
+                                    <input className='inputAngle' type="number" title='Шаг изменения угла' min={1} max={100}
                                     value={stepValue} onChange={(e) => {
-                                        const parsed = parseInt(e.target.value, 10);
-                                        setStepValue(isNaN(parsed) ? 0 : parsed)
+                                        const value = parseInt(e.target.value, 10) || 0;
+                                        setStepValue(value)
                                     }}
                                         style={{width: "35px", border: "1px solid #2e303a", borderRadius: 12,
                                             padding: "0 4px", textAlign: "center", backgroundColor: "#1e1027",
@@ -398,21 +369,21 @@ export function PropertiesPanel() {
                         <div style={{display: "grid", gridTemplateColumns: "1fr 120px", gridTemplateRows: "1fr 60px", gap: 5, width: "100%", height: "100%",
                         }}>  
                         <div style={{ gridRow: "1", alignItems: "center", gap: 2 }}>
-                            <label style={{ ...labelStyleMobile, position: "relative", marginBottom: 0 }}>Текстура</label>
+                            <label className="labelStyleMobile" style={{position: "relative", marginBottom: 0 }}>Текстура</label>
                         </div>
-                            <img src={firstObj.textureUrl}
-                                style={{gridRow: "2", width: 100, height: 35, objectFit: "cover", borderRadius: 25 }}
-                            />    
-
-                            <button onClick={() => selectedObjects.forEach((obj) => {
-                                updateObj(obj.id, { textureUrl: undefined });
-                            })} style={{
-                                gridRow: "1 / span 3", gridColumn: "2", width: "100%", height: 26, background: "#ff5F56", color: "white",
-                                borderRadius: "30px", marginTop: 10, display: !firstObj.textureUrl ? "none" : "grid",
-                            }}>{"Удалить текстуру"}
-                            </button>
-
-                            <button onClick={() => openChoosingFiles()}
+                            { firstObj.textureUrl && (
+                                <img alt="🖼❌" src={firstObj.textureUrl}
+                                    style={{gridRow: "2", width: 100, height: 35, objectFit: "cover", borderRadius: 25 }}
+                                />   
+                            )}
+                            {firstObj.textureUrl && (
+                                <button onClick={() => removeTexture()} style={{
+                                    gridRow: "1 / span 3", gridColumn: "2", width: "100%", height: 26, background: "#ff5F56", color: "white",
+                                    borderRadius: "30px", marginTop: 10
+                                }}>Удалить текстуру
+                                </button>
+                            )}
+                            <button onClick={() => openChoosingFiles(selectedObjects, updateObj)}
                                 style={{
                                     gridRow: "2", gridColumn: "2", width: "100%", height: 26, background: "#8007bd", color: "#ffffff", 
                                     borderRadius: "30px", fontSize: "12px", marginTop: 22
@@ -427,20 +398,20 @@ export function PropertiesPanel() {
                         }}>
                             <>
                                 <div>
-                                    <span style={{...labelStyleMobile, fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Прозрачность: {firstObj.opacity.toFixed(2)}
-                                    <span style={{marginLeft: '18px', ...controlsContainerMobileStyle, justifyContent: 'space-between'}}>
-                                        <button onClick={() => changeMaterialProp('opacity', 0.05, true)} 
-                                        style={{ ...btnMobileStyle, background: "#00ff56"}}>➕</button>
-                                        <button onClick={() => changeMaterialProp('opacity', 0.05, false)} 
-                                        style={{ ...btnMobileStyle, background: "#ff0022"}}>➖</button>
+                                    <span className="labelStyleMobile" style={{fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Прозрачность: {firstObj.opacity.toFixed(2)}
+                                    <span className="controlsContainerMobileStyle" style={{marginLeft: '18px', justifyContent: 'space-between'}}>
+                                        <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'opacity', 0.05, true)} 
+                                        className="btnMobileStyle btn-plus">➕</button>
+                                        <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'opacity', 0.05, false)} 
+                                        className="btnMobileStyle btn-minus">➖</button>
                                     </span>
                                     </span>                                
-                                    <span style={{...labelStyleMobile, fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Металличность: {firstObj.metalness.toFixed(2)}
-                                    <span style={{marginLeft: "9px", ...controlsContainerMobileStyle}}>
-                                    <button onClick={() => changeMaterialProp('metalness', 0.05, true)} 
-                                        style={{ ...btnMobileStyle, background: "#00ff56"}}>➕</button>
-                                        <button onClick={() => changeMaterialProp('metalness', 0.05, false)} 
-                                        style={{ ...btnMobileStyle, background: "#ff0022"}}>➖</button>
+                                    <span className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Металличность: {firstObj.metalness.toFixed(2)}
+                                    <span className="controlsContainerMobileStyle" style={{marginLeft: "9px"}}>
+                                    <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj,'metalness', 0.05, true)} 
+                                        className="btnMobileStyle btn-plus">➕</button>
+                                        <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'metalness', 0.05, false)} 
+                                        className="btnMobileStyle btn-minus">➖</button>
                                     </span>
                                     </span>
                                 </div>
@@ -455,16 +426,16 @@ export function PropertiesPanel() {
                         }}>
                             <>
                                 <div>
-                                    <span style={{...labelStyleMobile, fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Шероховатость: {firstObj.roughness.toFixed(2)}
-                                    <span style={{marginLeft: '18px', ...controlsContainerMobileStyle}}>
-                                    <button onClick={() => changeMaterialProp('roughness', 0.05, true)} 
-                                        style={{ ...btnMobileStyle, background: "#00ff56"}}>➕</button>
-                                        <button onClick={() => changeMaterialProp('roughness', 0.05, false)} 
-                                        style={{ ...btnMobileStyle, background: "#ff0022"}}>➖</button>
+                                    <span className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Шероховатость: {firstObj.roughness.toFixed(2)}
+                                    <span className="controlsContainerMobileStyle" style={{marginLeft: '18px'}}>
+                                    <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'roughness', 0.05, true)} 
+                                        className="btnMobileStyle btn-plus">➕</button>
+                                        <button className="btnMobileStyle btn-minus" onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'roughness', 0.05, false)} 
+                                        >➖</button>
                                     </span>
                                     </span>                                
-                                    <label style={{...labelStyleMobile, fontSize: "20px", display: "flex", justifyContent: "space-between"}}>Каркас: 
-                                    <span style={{marginLeft: "15px", ...controlsContainerMobileStyle}}>
+                                    <label className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Каркас: 
+                                    <span className="controlsContainerMobileStyle" style={{marginLeft: "15px"}}>
                                         <Toggle checked={firstObj.wireframe} onChange={(value) => {
                                             selectedObjects.forEach((obj) => updateObj(obj.id, {wireframe: value}))
                                         }}
@@ -497,6 +468,7 @@ export function PropertiesPanel() {
         );
     }
 
+    if (!firstObj) return null
     return (
         <div style={{
             position: 'absolute', top: 20, right: 20, width: 280,
@@ -515,56 +487,28 @@ export function PropertiesPanel() {
 
             {/* Позиция */}
             <div>
-                <label style={labelStyle}>
-                    Позиция {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {['X', 'Y', 'Z'].map((axis, i) => (
-                        <div key={axis} style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: 10, color: axis === 'X' ? '#FF5F56' : axis === 'Y' ? '#48FF73' : '#1948FF', marginBottom: 4 }}>
-                                {axis}
-                            </label>
-                            <input type="number" step="0.1" value={firstObj.position[i].toFixed(1)} onChange={(e) => handlePositionChange(i, parseFloat(e.target.value))}
-                                style={inputStyle}
-                            />
-                        </div>
-                    ))}
-                </div>
+                <AxisInput labelname="Позиция" values={firstObj.position} onChange={handlePositionChange}
+                    colors={AXIS_COLORS} multi={isMultiObj}
+               />                    
             </div>
 
             {/* Вращение */}
-            <div>
-                <label style={labelStyle}>
-                    Вращение (радианы) {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {['X', 'Y', 'Z'].map((axis, i) => (
-                        <div key={axis} style={{ flex: 1 }}>
-                            <input type="number" step="0.1" value={firstObj.rotation[i].toFixed(1)} onChange={(e) => handleRotationChange(i, parseFloat(e.target.value))}
-                                style={inputStyle} />
-                        </div>
-                    ))}
-                </div>
+            <div style={{alignItems: "center"}}>
+                <AxisInput labelname="Вращение" values={firstObj.rotation} onChange={handleRotationChange}
+                    colors={AXIS_COLORS} multi={isMultiObj}
+               />
             </div>
 
             {/* Масштаб */}
             <div>
-                <label style={labelStyle}>
-                    Масштаб {isMultiObj && '(применяется ко всем)'}
-                </label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {['X', 'Y', 'Z'].map((axis, i) => (
-                        <div key={axis} style={{ flex: 1 }}>
-                            <input type="number" step="0.1" value={firstObj.scale[i].toFixed(1)} onChange={(e) => handleScaleChange(i, parseFloat(e.target.value))}
-                                style={inputStyle} />
-                        </div>
-                    ))}
-                </div>
+                <AxisInput labelname="Масштаб" values={firstObj.scale} onChange={handleScaleChange}
+                    colors={AXIS_COLORS} multi={isMultiObj}
+               />
             </div>
 
             {/* Цвет */}
             <div>
-                <label style={labelStyle}> Цвет {isMultiObj && '(применяется ко всем)'}</label>
+                <label className="labelStyle"> Цвет {isMultiObj && '(применяется ко всем)'}</label>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                     <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: false }))}
                         style={{
@@ -604,22 +548,19 @@ export function PropertiesPanel() {
             </div>
             {/* ✅ Текстура */}
             <div>
-                <label style={labelStyle}>
+                <label className="labelStyle">
                     Текстура {isMultiObj && '(применяется к первому объекту)'}
                 </label>
 
                 {/* Превью текстуры */}
                 {firstObj.textureUrl && (
                     <div style={{
-                        marginBottom: 8,
-                        position: 'relative',
-                        borderRadius: 4,
-                        overflow: 'hidden',
+                        marginBottom: 8, position: 'relative',
+                        borderRadius: 4, overflow: 'hidden',
                         border: '1px solid #2e303a'
                     }}>
                         <img
-                            src={firstObj.textureUrl}
-                            alt="Texture preview"
+                            src={firstObj.textureUrl} alt="🖼❌"
                             style={{
                                 width: '100%',
                                 height: 80,
@@ -627,12 +568,7 @@ export function PropertiesPanel() {
                                 display: 'block'
                             }}
                         />
-                        <button
-                            onClick={() => {
-                                selectedObjects.forEach((obj) => {
-                                    updateObj(obj.id, { textureUrl: undefined });
-                                });
-                            }}
+                        <button onClick={() => { removeTexture(); }}
                             style={{
                                 position: 'absolute',
                                 top: 4,
@@ -658,7 +594,7 @@ export function PropertiesPanel() {
                 {/* Кнопка загрузки */}
                 <button
                     onClick={() => {
-                        openChoosingFiles()                        
+                        openChoosingFiles(selectedObjects, updateObj)                        
                     }}
                     style={{
                         width: '100%', padding: '8px 12px', background: '#14151f',
@@ -681,17 +617,17 @@ export function PropertiesPanel() {
             {firstObj.type === 'text' && (
                 <>
                     <div>
-                        <label style={labelStyle}>Содержимое текста (Enter для новой строки)</label>
+                        <label className="labelStyle">Содержимое текста (Enter для новой строки)</label>
                         <textarea value={firstObj.text || ''} onChange={(e) => {
                             const val = e.target.value;
                             selectedObjects.forEach((obj) => {
                                 if (obj.type === 'text') { updateObj(obj.id, { text: val }) };
                             });
-                        }} rows={4} style={inputStyle} placeholder="Введите текст...&#10;Enter = новая строка"/>
+                        }} rows={4} className="input-style" placeholder="Введите текст...&#10;Enter = новая строка"/>
                     </div>
                     <div>
-                        <label style={labelStyle}>Размер шрифта</label>
-                        <input type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
+                        <label className="labelStyle">Размер шрифта</label>
+                        <input className="input-style" type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
                             const value = parseFloat(e.target.value);
                             selectedObjects.forEach((obj) => {
                                 if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
@@ -707,7 +643,7 @@ export function PropertiesPanel() {
                 <>
                     {/* прозрачность */}
                     <div>
-                        <label style={labelStyle}>
+                        <label className="labelStyle">
                             Прозрачность {isMultiObj && '(применяется ко всем)'}
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -727,7 +663,7 @@ export function PropertiesPanel() {
 
                     {/* металлизированность */}
                     <div>
-                        <label style={labelStyle}>
+                        <label className="labelStyle">
                             Металлизированность {isMultiObj && '(применяется ко всем)'}
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -747,7 +683,7 @@ export function PropertiesPanel() {
 
                     {/* шероховатость */}
                     <div>
-                        <label style={labelStyle}>
+                        <label className="labelStyle">
                             Шероховатость {isMultiObj && '(применяется ко всем)'}
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
