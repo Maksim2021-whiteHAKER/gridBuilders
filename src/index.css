@@ -156,6 +156,17 @@ button:focus-visible {
   height: 100vh;
 }
 
+.closeBtn {
+  margin-left: 12px;
+  padding: 4px 12px;
+  background: #aa3bff;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 12px 
+}
+
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
   20% { opacity: 1; transform: translateX(-50%) translateY(0); }

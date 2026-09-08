@@ -7,6 +7,16 @@ import { importFromGLB as importGLBUtils } from "../utils/importFromGLB";
 import { importFromOBJ as importOBJUtils } from "../utils/importFromOBJ";
 import * as THREE from 'three'
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
+import { saveScene } from "../lib/appwrite";
+import { useAuthStore } from "./authStore";
+
+function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+    let timer: ReturnType<typeof setTimeout>;
+    return ((...args: unknown[]) => {
+        clearInterval(timer);
+        timer = setTimeout(() => fn(...args), delay)
+    }) as T;
+}
 
 export interface SceneObject {
     id: string,
@@ -30,6 +40,9 @@ export interface SceneObject {
     fontSize?: number,
     maxWidth?: number,
     textAllign?: 'left' | 'center' | 'right'
+
+    deleted?: boolean,
+    deletedAt?: number,
 }
 
 type TransformMode = 'translate' | 'rotate' | 'scale'
@@ -50,15 +63,28 @@ interface SceneStore extends SceneState {
     camera: THREE.Camera | null,
     lastSaved: number | null,
     rawMeshes: THREE.Object3D[],
+    online: boolean,
+    currentSceneId: string | null;
+    
+    setOnline: (online: boolean) => void,
+    setCurrentSceneId: (id: string | null) => void,
+    pushToCloud: () => void,
 
-    setCamera: (camera: THREE.Camera | null) => void
+    // applyRealTimeCreate: (obj: SceneObject) => void ,
+    // applyRealTimeUpdate: (id: string, updates: Partial<SceneObject>) => void,
+    // applyRealTimeDelete: (id: string) => void,
+
+    setCamera: (camera: THREE.Camera | null) => void,
     setControls: (controls: OrbitControls | null) => void,   
+    setObjectsFromRealtime: (newObjects: SceneObject[]) => void,
     
     // Действия
     addObj: (obj: SceneObject) => void,
     updateObj: (id: string, updates: Partial<SceneObject>, skipHistory?: boolean) => void,
     setObjects: (newObjects: SceneObject[]) => void,
     deleteObj: (id: string) => void,
+    restoreObj: (id: string) => void,
+    emptyTrash: () => void,
     clearScene: () => void,
     selectObject: (id: string ) => void,
     addToSelection: (id: string ) => void,
@@ -119,321 +145,438 @@ function getCurrentState(state: SceneStore): SceneState {
     }
 }
 
-export const useSceneStore = create<SceneStore>((set, get) => ({
-    objects: initialState.objects || [],
-    selectedIds: [],
-    transformMode: initialState.transformMode || 'translate',
-    snapEnabled: initialState.snapEnabled !== undefined ? initialState.snapEnabled : true,
-    gridSize: initialState.gridSize || 1.0,
-    past: [],
-    future: [],   
-    lastSaved: null,
-    rawMeshes: [],
-
-    controls: null,
-    camera: null,
-    setCamera: (camera) => set({ camera }),
-    setControls: (controls) => set({ controls }),
-  
-    addObj: (obj) => {
-        const state = get()
-        set({
-            past: [...state.past.slice(-49), getCurrentState(state)],
-            future: [],
-            objects: [...state.objects, {
-                ...obj,
-                opacity: 1.0,
-                metalness: 0.0,
-                roughness: 0.5,
-                wireframe: false,
-                textureUrl: undefined,
-                text: obj.type === 'text' ? (obj.text || "Текст") : undefined,
-                fontSize: obj.type === 'text' ? (obj.fontSize || 0.5) : undefined,
-                maxWidth: obj.type === 'text' ? 12 : undefined,
-                textAllign: obj.type === 'text' ? 'center' : undefined,
-                useGradient: false,
-                gradientColors: ["#ffffff", "#000001"],
-                gradientType: 'linear' as const,
-                gradientAngle: 0,
-            }],
-            selectedIds: [obj.id]
+function makePushToCloud(get: () => SceneStore) {
+    return debounce(() => {
+        const state = get();
+        if (!state.currentSceneId || !state.online) return;
+        const user = useAuthStore.getState().user;
+        if (!user) return;
+        const visibleObjects = state.objects.filter(o => !o.deleted);
+        saveScene(user.$id, 'collab-scene', {objects: visibleObjects}, state.currentSceneId)
+            .catch((err: unknown) => {console.error("Сохранение в облако провалено: " + err)
         })
-        get().saveToLocalStorage();
-    },
+    }, 1000)
+}
 
-    setObjects: (newObjects: SceneObject[]) => set({
-        objects: newObjects,
+export const useSceneStore = create<SceneStore>((set, get) => {
+
+    const pushToCloud = makePushToCloud(get);
+
+    return {
+        objects: initialState.objects || [],
         selectedIds: [],
+        transformMode: initialState.transformMode || 'translate',
+        snapEnabled: initialState.snapEnabled !== undefined ? initialState.snapEnabled : true,
+        gridSize: initialState.gridSize || 1.0,
         past: [],
-        future: []
-    }),
+        future: [],   
+        lastSaved: null,
+        rawMeshes: [],
+        online: false,
+        currentSceneId: null,
 
-    updateObj: (id, update, skipHistory = false) => {
-        const state = get()
-        if (skipHistory){
+        controls: null,
+        camera: null,
+        setCamera: (camera) => set({ camera }),
+        setControls: (controls) => set({ controls }),
+        setOnline: (online: boolean) => set({ online }),
+        setCurrentSceneId: (id: string | null) => set({currentSceneId: id}),
+
+        pushToCloud,
+
+        setObjectsFromRealtime: (newObjects: SceneObject[]) => {
+            const state = get()
+            const newIds = new Set(newObjects.map(o => o.id))
+            const validSelectedIds = state.selectedIds.filter(id => newIds.has(id));
             set({
-                objects: state.objects.map((o) => 
-                    o.id === id ? {...o, ...update} : o
-                )
-            })
-        } else {
-            set({
-                past: [...state.past.slice(-49), getCurrentState(state)],
-                future: [],
-                objects: state.objects.map((o) => 
-                    o.id === id ? {...o, ...update} : o
-                )
-            })
-        }
-        get().saveToLocalStorage();
-    },
-
-    deleteObj: (id) => {
-        const state = get()
-        set({
-            past: [...state.past.slice(-49), getCurrentState(state)],
-            future: [],
-            objects: state.objects.filter((o) => o.id !== id),
-            selectedIds: state.selectedIds.filter((sid) => sid !== id)
-        })
-        get().saveToLocalStorage();
-    },
-
-    selectObject: (id) => set({selectedIds: [id]}),
-
-    addToSelection: (id) => {
-        const state = get()
-        if (state.selectedIds.includes(id)){
-            set ({selectedIds: state.selectedIds.filter(sid => sid !== id)})
-        } else {
-            set ({ selectedIds: [...state.selectedIds, id]})
-        }
-    },
-
-    clearSelection: () => set({selectedIds: []}),
-    
-    clearScene: () => {
-        const state = get()
-        set({
-            past: [...state.past.slice(-49), getCurrentState(state)],
-            future: [],
-            objects: [],
-            selectedIds: []
-        })
-        get().saveToLocalStorage();
-    },
-
-    setTransformMode: (mode) => set({transformMode: mode}),
-
-    duplicateObject: (id) => {
-        const state = get()
-        const obj = state.objects.find(o => o.id === id)
-        if (obj) {
-            const newObj: SceneObject = {
-                ...obj,
-                id: crypto.randomUUID(),
-                position: [
-                    obj.position[0] + 2,
-                    obj.position[1],
-                    obj.position[2]
-                ]
+                objects: newObjects,
+                selectedIds: validSelectedIds
             }
+        )},
+    
+        addObj: (obj) => {
+            const state = get()
             set({
                 past: [...state.past.slice(-49), getCurrentState(state)],
                 future: [],
-                objects: [...state.objects, newObj],
-                selectedIds: [newObj.id]
+                objects: [...state.objects, {
+                    ...obj,
+                    opacity: 1.0,
+                    metalness: 0.0,
+                    roughness: 0.5,
+                    wireframe: false,
+                    textureUrl: undefined,
+                    text: obj.type === 'text' ? (obj.text || "Текст") : undefined,
+                    fontSize: obj.type === 'text' ? (obj.fontSize || 0.5) : undefined,
+                    maxWidth: obj.type === 'text' ? 12 : undefined,
+                    textAllign: obj.type === 'text' ? 'center' : undefined,
+                    useGradient: false,
+                    gradientColors: ["#ffffff", "#000001"],
+                    gradientType: 'linear' as const,
+                    gradientAngle: 0,
+                }],
+                selectedIds: [obj.id]
             })
-            get().saveToLocalStorage();
-        }
-    },
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
 
-    selectAll() {
-        const state = get();
-        const allIds = state.objects.map(obj => obj.id)
-        set ({ selectedIds: allIds})
-        
-    },
+        setObjects: (newObjects: SceneObject[]) => set({
+            objects: newObjects,
+            selectedIds: [],
+            past: [],
+            future: []
+        }),
 
-    toggleSnap() {
-       const state = get();
-       set({snapEnabled: !state.snapEnabled}) 
-       get().saveToLocalStorage();
-    },
-
-    setGridSize: (size: number) => {
-        set({gridSize: size})
-        get().saveToLocalStorage();
-    },
-
-    //сохран и загруз
-    saveToLocalStorage: () => {
-        const state = get();
-        const sceneData = {
-           objects: state.objects,
-           transformMode: state.transformMode,
-           snapEnabled: state.snapEnabled,
-           gridSize: state.gridSize,
-           savedAt: new Date().toISOString()
-        };
-        try {
-            localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData))
-            set({ lastSaved: Date.now() })
-        } catch (e) {
-            console.error("Провал сохранения в Локальное хранилище: " + e);
-        }
-    },
-
-    loadFromLocalStorage: () => {
-        try {
-            const saved = localStorage.getItem('gridbuilders_scene');
-            if (saved) {
-                const parsed = JSON.parse(saved);
+        updateObj: (id, update, skipHistory = false) => {
+            const state = get()
+            if (skipHistory){
                 set({
-                    objects: parsed.objects || [],
-                    selectedIds: [],
-                    transformMode: parsed.transformMode || 'translate',
-                    snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
-                    gridSize: parsed.gridSize || 1.0,
-                    past: [],
+                    objects: state.objects.map((o) => 
+                        o.id === id ? {...o, ...update} : o
+                    )
+                })
+            } else {
+                set({
+                    past: [...state.past.slice(-49), getCurrentState(state)],
                     future: [],
-                });
-            } 
-        } catch (e) {
-            console.error("Провалена загрузка из Локального хранилища: " + e)
-        }
-    },
+                    objects: state.objects.map((o) => 
+                        o.id === id ? {...o, ...update} : o
+                    )
+                })
+            }
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
 
-    exportJSON: () => {
-        const state = get();
-        const sceneData = {
-            version: version,
-            exportedAt: new Date().toISOString(), 
+        deleteObj: (id) => {
+            const state = get()
+            if (state.online) {
+                set({
+                    past: [...state.past.slice(-9), getCurrentState(state)],
+                    future: [],
+                    objects: state.objects.map(o => 
+                        o.id === id ? {...o, deleted: true, deletedAt: Date.now()} : o
+                    ),
+                    selectedIds: state.selectedIds.filter((sid) => sid !== id)
+                })            
+            } else {
+                set({
+                    past: [...state.past.slice(-49), getCurrentState(state)],
+                    future: [],
+                    objects: state.objects.filter((o) => o.id !== id),
+                    selectedIds: state.selectedIds.filter((sid) => sid !== id)
+                })
+            }
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
+
+        restoreObj: (id) => {
+            const state = get()
+            set({
+                past: [...state.past.slice(-9), getCurrentState(state)],
+                future: [],
+                objects: state.objects.map(o => 
+                    o.id === id ? {...o, deleted: false, deletedAt: undefined} : o
+                )
+            })
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
+
+        emptyTrash: () => {
+            const state = get();
+            set({
+                past: [...state.past.slice(-9), getCurrentState(state)],
+                future: [],
+                objects: state.objects.filter(o => !o.deleted)
+            })
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
+
+        selectObject: (id) => set({selectedIds: [id]}),
+
+        addToSelection: (id) => {
+            const state = get()
+            if (state.selectedIds.includes(id)){
+                set ({selectedIds: state.selectedIds.filter(sid => sid !== id)})
+            } else {
+                set ({ selectedIds: [...state.selectedIds, id]})
+            }
+        },
+
+        clearSelection: () => set({selectedIds: []}),
+        
+        clearScene: () => {
+            const state = get()
+            set({
+                past: [...state.past.slice(-49), getCurrentState(state)],
+                future: [],
+                objects: [],
+                selectedIds: []
+            })
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
+
+        setTransformMode: (mode) => set({transformMode: mode}),
+
+        duplicateObject: (id) => {
+            const state = get()
+            const obj = state.objects.find(o => o.id === id)
+            if (obj) {
+                const newObj: SceneObject = {
+                    ...obj,
+                    id: crypto.randomUUID(),
+                    position: [
+                        obj.position[0] + 2,
+                        obj.position[1],
+                        obj.position[2]
+                    ]
+                }
+                set({
+                    past: [...state.past.slice(-49), getCurrentState(state)],
+                    future: [],
+                    objects: [...state.objects, newObj],
+                    selectedIds: [newObj.id]
+                })
+                if (get().online) {
+                    pushToCloud()                
+                } else get().saveToLocalStorage();
+            }
+        },
+
+        selectAll() {
+            const state = get();
+            const allIds = state.objects.filter(o => !o.deleted).map(obj => obj.id)
+            set ({ selectedIds: allIds})
+            
+        },
+
+        toggleSnap() {
+            const state = get();
+            set({snapEnabled: !state.snapEnabled}) 
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
+
+        setGridSize: (size: number) => {
+            set({gridSize: size})
+            if (get().online) {
+                pushToCloud()                
+            } else get().saveToLocalStorage();
+        },
+
+        //сохран и загруз
+        saveToLocalStorage: () => {
+            const state = get();
+            const sceneData = {
             objects: state.objects,
             transformMode: state.transformMode,
             snapEnabled: state.snapEnabled,
-            gridSize: state.gridSize
-        }
-        const json = JSON.stringify(sceneData, null, 2);
-        const blob = new Blob([json], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
+            gridSize: state.gridSize,
+            savedAt: new Date().toISOString()
 
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `gridbuilders_scene_${Date.now()}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url)
-    },
-
-    exportRBXM: () => {
-        const state = get();
-        exportToRoblox(state.objects);
-    },
-
-    exportGLB: () => {
-        const state = get()
-        exportToGLB(state.objects, `gridbuilders_scene_${Date.now()}`)
-    },
-
-    importJSON: (jsonString: string) => {
-        try {
-            const parsed = JSON.parse(jsonString);
-            if (!parsed.objects || !Array.isArray(parsed.objects)){
-                throw new Error("Неверный формат сцены");
+            };
+            try {
+                localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData))
+                set({ lastSaved: Date.now() })
+            } catch (e) {
+                console.error("Провал сохранения в Локальное хранилище: " + e);
             }
+        },
+
+        loadFromLocalStorage: () => {
+            try {
+                const saved = localStorage.getItem('gridbuilders_scene');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    set({
+                        objects: parsed.objects || [],
+                        selectedIds: [],
+                        transformMode: parsed.transformMode || 'translate',
+                        snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
+                        gridSize: parsed.gridSize || 1.0,
+                        past: [],
+                        future: [],
+                    });
+                } 
+            } catch (e) {
+                console.error("Провалена загрузка из Локального хранилища: " + e)
+            }
+        },
+
+        exportJSON: () => {
             const state = get();
+            const visibleObjects = state.objects.filter(o => !o.deleted)
+            const sceneData = {
+                version: version,
+                exportedAt: new Date().toISOString(), 
+                objects: visibleObjects,
+                transformMode: state.transformMode,
+                snapEnabled: state.snapEnabled,
+                gridSize: state.gridSize
+            }
+            const json = JSON.stringify(sceneData, null, 2);
+            const blob = new Blob([json], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `gridbuilders_scene_${Date.now()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url)
+        },
+
+        exportRBXM: () => {
+            const state = get();
+            const visibleObjects = state.objects.filter(o => !o.deleted)
+            exportToRoblox(visibleObjects);
+        },
+
+        exportGLB: () => {
+            const state = get()
+            const visibleObjects = state.objects.filter(o => !o.deleted)
+            exportToGLB(visibleObjects, `gridbuilders_scene_${Date.now()}`)
+        },
+
+        importJSON: (jsonString: string) => {
+            try {
+                const parsed = JSON.parse(jsonString);
+                if (!parsed.objects || !Array.isArray(parsed.objects)){
+                    throw new Error("Неверный формат сцены");
+                }
+                const state = get();
+                set({
+                    past: [...state.past.slice(-49), getCurrentState(state)],
+                    future: [],
+                    objects: parsed.objects,
+                    selectedIds: [],
+                    transformMode: parsed.transformMode || 'translate',
+                    snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
+                    gridSize: parsed.gridSize || 1.0,            
+                })
+                get().saveToLocalStorage();
+                return true;
+            } catch (e) {
+                console.error("Провал JSON импорта: " + e);
+                return false;
+            }
+        },    
+        
+        importGLB: (file: File, callback: (success: boolean) => void) => {
+            const state = get();
+            importGLBUtils(
+                file, (objects) => {
+                    set({
+                        past: [...state.past.slice(-49), getCurrentState(state)],
+                        future: [],
+                        objects: [...state.objects, ...objects],
+                        selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
+                    })
+                    get().saveToLocalStorage();
+                    callback(true);
+                }, (error) => {
+
+                    console.error(error);
+                    alert(error)
+                    callback(false)
+                }
+            )
+        },
+
+        importOBJ: (file: File, callback: (success: boolean) => void) => {
+            const state = get();
+            importOBJUtils(
+                file, (objects, rawGroup) => {
+                    set({
+                        past: [...state.past.slice(-49), getCurrentState(state)],
+                        future: [],
+                        objects: [...state.objects, ...objects],
+                        rawMeshes: [...state.rawMeshes, rawGroup],
+                        selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
+                    })
+                    get().saveToLocalStorage();
+                    callback(true);
+                }, (error) => {
+                    console.error(error);
+                    alert(error)
+                    callback(false)
+                }
+            )
+        },
+
+        undo: () => {
+            const state = get()
+            if (state.past.length === 0) return
+            
+            const previousState = state.past[state.past.length - 1]
+            const currentState = getCurrentState(state)
+            
             set({
-                past: [...state.past.slice(-49), getCurrentState(state)],
-                future: [],
-                objects: parsed.objects,
-                selectedIds: [],
-                transformMode: parsed.transformMode || 'translate',
-                snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
-                gridSize: parsed.gridSize || 1.0,            
+                ...previousState,
+                past: state.past.slice(0, -1),
+                future: [currentState, ...state.future]
             })
             get().saveToLocalStorage();
-            return true;
-        } catch (e) {
-            console.error("Провал JSON импорта: " + e);
-            return false;
-        }
-    },    
-    
-    importGLB: (file: File, callback: (success: boolean) => void) => {
-        const state = get();
-        importGLBUtils(
-            file, (objects) => {
-                set({
-                    past: [...state.past.slice(-49), getCurrentState(state)],
-                    future: [],
-                    objects: [...state.objects, ...objects],
-                    selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
-                })
-                get().saveToLocalStorage();
-                callback(true);
-            }, (error) => {
+        },
 
-                console.error(error);
-                alert(error)
-                callback(false)
-            }
-        )
-    },
+        redo: () => {
+            const state = get()
+            if (state.future.length === 0) return
+            
+            const nextState = state.future[0]
+            const currentState = getCurrentState(state)
+            
+            set({
+                ...nextState,
+                past: [...state.past, currentState],
+                future: state.future.slice(1)
+            })
+            get().saveToLocalStorage();
+        },
 
-    importOBJ: (file: File, callback: (success: boolean) => void) => {
-        const state = get();
-        importOBJUtils(
-            file, (objects, rawGroup) => {
-                set({
-                    past: [...state.past.slice(-49), getCurrentState(state)],
-                    future: [],
-                    objects: [...state.objects, ...objects],
-                    rawMeshes: [...state.rawMeshes, rawGroup],
-                    selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
-                })
-                get().saveToLocalStorage();
-                callback(true);
-            }, (error) => {
-                console.error(error);
-                alert(error)
-                callback(false)
-            }
-        )
-    },
+        canUndo: () => get().past.length > 0,
+        canRedo: () => get().future.length > 0,
 
+        // online
+        // applyRealTimeCreate: (obj: SceneObject) => {
+        //     set(state => ({
+        //         objects: state.objects.some(o => o.id === obj.id) 
+        //             ? state.objects
+        //             : [...state.objects, obj]
+        //     }));
+        // },
 
-    undo: () => {
-        const state = get()
-        if (state.past.length === 0) return
-        
-        const previousState = state.past[state.past.length - 1]
-        const currentState = getCurrentState(state)
-        
-        set({
-            ...previousState,
-            past: state.past.slice(0, -1),
-            future: [currentState, ...state.future]
-        })
-        get().saveToLocalStorage();
-    },
+        // applyRealTimeUpdate: (id, update) => {
+        //     const state = get()
+        //     if (state.selectedIds.includes(id)) return;
 
-    redo: () => {
-        const state = get()
-        if (state.future.length === 0) return
-        
-        const nextState = state.future[0]
-        const currentState = getCurrentState(state)
-        
-        set({
-            ...nextState,
-            past: [...state.past, currentState],
-            future: state.future.slice(1)
-        })
-        get().saveToLocalStorage();
-    },
+        //     set({
+        //         objects: state.objects.map((o) => 
+        //             o.id === id ? {...o, ...update} : o
+        //         )
+        //     })
+        // },
 
-    canUndo: () => get().past.length > 0,
-    canRedo: () => get().future.length > 0
-}))
+        // applyRealTimeDelete: (id) => {
+        //     set(state => ({
+        //         objects: state.objects.map(o => 
+        //             o.id === id ? {...o, deleted: true, deletedAt: Date.now()} : o
+        //         ),
+        //         selectedIds: state.selectedIds.filter((sid) => sid !== id)
+        //     }))
+        // },
+    }
+})

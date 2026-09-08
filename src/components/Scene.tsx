@@ -1,5 +1,5 @@
 // /src/components/Scene.tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsDrei, Grid, Line, TransformControls, Outlines, Text as Text3D } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
@@ -10,6 +10,7 @@ import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { subscribeToSceneUpdates } from '../lib/realtime.ts'
 
 function CameraSaver() {
     const { camera } = useThree();
@@ -221,8 +222,9 @@ function ClickOutsideHandle() {
     return null;
 }
 
-export function Scene_GB(){
-    const objects = useSceneStore((state) => state.objects);
+export function Scene_GB() {
+    const allObjects = useSceneStore((state) => state.objects);
+    const objects = useMemo(() => allObjects.filter(o => !o.deleted), [allObjects]);
     const selectedIds = useSceneStore((state) => state.selectedIds);
     
     const updateObj = useSceneStore((state) => state.updateObj);
@@ -236,6 +238,10 @@ export function Scene_GB(){
 
     const lastSaved = useSceneStore((state) => state.lastSaved)
 
+    const isOnline = useSceneStore((state) => state.online)
+    const setOnline = useSceneStore((state) => state.setOnline)
+    const currentSceneId = useSceneStore((state) => state.currentSceneId)
+
     const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null)
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
@@ -246,6 +252,35 @@ export function Scene_GB(){
             setShowSavedIndicator(true)
         }
     }
+
+    useEffect(() => {
+        if (!isOnline || !currentSceneId) return 
+        const unsubscribe = subscribeToSceneUpdates(currentSceneId, (update) => {
+            const doc = update.document;
+            const updateEvent = update.event;
+            if (!doc) return
+            try {
+                const sceneData = typeof doc.scene_data === 'string' 
+                    ? JSON.parse(doc.scene_data)
+                    : doc.scene_data;
+                const newObjects = Array.isArray(sceneData)
+                    ? sceneData
+                    : sceneData.objects || [];
+                        
+                if (updateEvent === 'create' || updateEvent === 'update') {
+                    useSceneStore.getState().setObjectsFromRealtime(newObjects);
+                }
+                if (updateEvent === 'delete') useSceneStore.getState().setObjects([]);
+
+            } catch (err: unknown) {console.error('Ошибка чтения realtime-обновления: '+ err)}
+        });
+
+        return () => {
+            unsubscribe();
+            setOnline(false);
+        };
+
+    }, [currentSceneId, isOnline, setOnline])
 
     useEffect(() => {
         if (!showSavedIndicator) return

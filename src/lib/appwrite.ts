@@ -1,8 +1,8 @@
 // src/lib/appwrite.ts
-import { Client, Account, Databases, Query } from "appwrite";
+import { Client, Account, Databases, Query, Permission, Role } from "appwrite";
 
-const DATA_BASE = import.meta.env.VITE_APPWRITE_DATA_BASE_ID
-const COLLECTION = import.meta.env.VITE_APPWRITE_COLLECTION_ID
+export const DATA_BASE = import.meta.env.VITE_APPWRITE_DATA_BASE_ID
+export const COLLECTION = import.meta.env.VITE_APPWRITE_COLLECTION_ID
 
 const client = new Client()
     .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT)
@@ -128,14 +128,20 @@ export async function renameScene(documentId: string, newName: string) {
  * - isPublic: флаг для UI (отображает «Открыто»/«Закрыто»).
  * - permissions: реальные права доступа к документу в Appwrite.
  */
-export async function toggleScenePublic(documentId: string, isPublic: boolean) {
-    const permissions = isPublic ? ['read(any)'] : [];
+export async function toggleScenePublic(documentId: string, isPublic: boolean, ownerId: string) {
+    const ownerPermissions = [
+        Permission.read(Role.user(ownerId)),
+        Permission.update(Role.user(ownerId)),
+        Permission.delete(Role.user(ownerId))
+    ];
+
+    const permissions = isPublic ? [...ownerPermissions, Permission.read(Role.any())] : ownerPermissions;
 
     return await databases.updateDocument(
         DATA_BASE,
         COLLECTION,
         documentId,
-        { isPublic: isPublic},
+        { is_public: isPublic},
         permissions
     )
 }

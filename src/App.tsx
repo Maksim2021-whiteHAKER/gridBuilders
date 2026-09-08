@@ -10,19 +10,35 @@ import { useAuthStore } from './store/authStore';
 import { AuthModal } from './components/AuthModal';
 import { ProjectModal } from './components/ProjectModal.tsx';
 import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
-import { getPublicScene } from './lib/appwrite'; // ✅ Импортируем функцию
+import { getPublicScene, loadScene } from './lib/appwrite'; // ✅ Импортируем функцию
 import { useSceneStore } from './store/sceneStore';
 
 function App() {
     const deviceType = useDeviceType();
     const { checkUser, user, signOut, isLoading } = useAuthStore();
     const { setObjects } = useSceneStore(); // ✅ Для загрузки сцены
-    
+
+    const openCollabScene = async (sceneId: string) => {
+        try {
+            const scene = await loadScene(sceneId);
+            setObjects(scene.data);
+            useSceneStore.getState().setCurrentSceneId(sceneId);
+            useSceneStore.getState().setOnline(true);
+        } catch (error: unknown) {console.error("Ошибка загрузки сцены: " + error)}
+    }
+
+    const closeCollabScene = () => {
+        useSceneStore.getState().setCurrentSceneId(null);
+        useSceneStore.getState().setOnline(false);
+        setObjects([]);
+    }
+
     const [showTutorial, setShowTutorial] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [isReadOnly, setIsReadOnly] = useState(false); // ✅ Режим просмотра
     const [publicSceneName, setPublicSceneName] = useState('');
+    const currentSceneId = useSceneStore((state) => state.currentSceneId);
     
     const isSmall = deviceType === 'tablet' || deviceType === 'mobile';
     let localSt = "gridbuilders_tutorial_seen";
@@ -85,12 +101,41 @@ function App() {
                 <>
                     {showTutorial && <MobileTutorial onClose={closeTutorial} />}
                     {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-                    {showProjectModal && <ProjectModal onClose={() => setShowProjectModal(false)} />}
+                    {showProjectModal && (
+                        <ProjectModal
+                            onClose={() => setShowProjectModal(false)}
+                            onOpenCollab={(sceneId) => {
+                                openCollabScene(sceneId)
+                                setShowProjectModal(false)
+                            }}
+                        />
+                    )}
                     {isSmall && <FullscreenOrientation />}
                 </>
             )}
-
             <Scene_GB />
+
+            {!isReadOnly && currentSceneId && (
+                <div 
+                    style={{
+                        position: 'fixed', 
+                        bottom: 20, left: "50%",
+                        transform: 'translateX(-50%)',
+                        background: "rgba(72, 255, 115, 0.9)",
+                        color: "#0a0b15", padding: "8px 16px",
+                        borderRadius: 20,
+                        fontSize: 13, fontWeight: 600,
+                        zIndex: 1500,
+                        display: 'flex', alignItems: 'center', gap: 12,
+                    }}>
+                        Совместный режим 🟢
+                        <button className="closeBtn"
+                        onClick={closeCollabScene}
+                    >
+                        ✕ Закрыть
+                    </button>
+                </div>
+            )}
 
             {/* Инструменты ТОЛЬКО если не режим просмотра */}
             {!isReadOnly && (
@@ -127,18 +172,8 @@ function App() {
                     gap: 8
                 }}>
                     👁️ {publicSceneName || 'Публичная сцена'}
-                    <button
+                    <button className="closeBtn"
                         onClick={() => window.location.href = '/'}
-                        style={{
-                            marginLeft: 12,
-                            padding: '4px 12px',
-                            background: '#aa3bff',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 12,
-                            cursor: 'pointer',
-                            fontSize: 12
-                        }}
                     >
                         ✕ Закрыть
                     </button>

@@ -5,7 +5,12 @@ import { useSceneStore } from "../store/sceneStore";
 import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../lib/appwrite";
 import type { SceneListItem } from "../typesAppwrite";
 
-export function ProjectModal({ onClose }: { onClose: () => void }) {
+interface ProjectModalProps {
+    onClose: () => void;
+    onOpenCollab: (sceneId: string) => void
+}
+
+export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
     const user = useAuthStore((state) => state.user);
     const { setObjects, objects } = useSceneStore();
 
@@ -19,12 +24,13 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
     const [editName, setEditName] = useState("");
     const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
 
-    if (!user) return null;
 
     useEffect(() => {
+        if (!user) return;
         fetchScenes();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    if (!user) return null;
 
     const fetchScenes = async () => {
         setIsLoading(true);
@@ -120,7 +126,7 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
     const togglePublic = async (sceneId: string, makePublic: boolean) => {
         setActionLoading(sceneId);
         try {
-            await toggleScenePublic(sceneId, makePublic);
+            await toggleScenePublic(sceneId, makePublic, user.$id);
             await fetchScenes();
             if (makePublic) {
                 // Если открыли, сразу предлагаем скопировать
@@ -147,7 +153,7 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
                 display: 'flex', flexDirection: 'column'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                     <h2 style={{ margin: 0, color: '#e4e4e7', fontSize: 18, fontWeight: 600 }}>📁 Мои проекты</h2>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 20, cursor: 'pointer' }}>❌</button>
                 </div>
@@ -223,6 +229,15 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
 
                                     {/* ✅ ОБНОВЛЁННЫЙ БЛОК КНОПОК */}
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <button onClick={() => {
+                                        onOpenCollab(scene.id);
+                                        onClose();
+                                    }} style={{
+                                        display: "flex", width: 55, border: "1px solid #2e303a", padding: "5px", marginBottom: 5, borderRadius: 15, background: "#aa3bff",
+                                        textAlign: "center", alignItems: "center"
+                                    }} title="совместное подключение"
+                                    >👥🔗
+                                    </button>
                                         <button
                                             onClick={() => load(scene)}
                                             disabled={actionLoading === scene.id}
@@ -231,7 +246,7 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                                         >
                                             {actionLoading === scene.id ? '...' : '📂'}
                                         </button>
-                                        
+
                                         <button
                                             onClick={() => deleteById(scene.id)}
                                             disabled={actionLoading === scene.id}
@@ -263,7 +278,7 @@ export function ProjectModal({ onClose }: { onClose: () => void }) {
                                                 >
                                                     {actionLoading === scene.id ? '...' : '🌐 Открыто'}
                                                 </button>
-                                                
+
                                                 {/* Отдельная кнопка только для копирования */}
                                                 <button
                                                     onClick={() => copyShareLink(scene.id)}
