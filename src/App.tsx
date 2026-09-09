@@ -10,13 +10,13 @@ import { useAuthStore } from './store/authStore';
 import { AuthModal } from './components/modals/AuthModal.tsx';
 import { ProjectModal } from './components/modals/ProjectModal.tsx';
 import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
-import { getPublicScene, loadScene } from './lib/appwrite'; // ✅ Импортируем функцию
+import { getPublicScene, loadScene } from './lib/appwrite';
 import { useSceneStore } from './store/sceneStore';
 
 function App() {
     const deviceType = useDeviceType();
     const { checkUser, user, signOut, isLoading } = useAuthStore();
-    const { setObjects } = useSceneStore(); // ✅ Для загрузки сцены
+    const { setObjects } = useSceneStore();
 
     const openCollabScene = async (sceneId: string) => {
         try {
@@ -24,32 +24,34 @@ function App() {
             setObjects(scene.data);
             useSceneStore.getState().setCurrentSceneId(sceneId);
             useSceneStore.getState().setOnline(true);
-        } catch (error: unknown) {console.error("Ошибка загрузки сцены: " + error)}
-    }
+        } catch (error: unknown) {
+            console.error("Ошибка загрузки сцены: " + error);
+        }
+    };
 
     const closeCollabScene = () => {
         useSceneStore.getState().setCurrentSceneId(null);
         useSceneStore.getState().setOnline(false);
         setObjects([]);
-    }
+    };
 
     const [showTutorial, setShowTutorial] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showProjectModal, setShowProjectModal] = useState(false);
-    const [isReadOnly, setIsReadOnly] = useState(false); // ✅ Режим просмотра
+    const [isReadOnly, setIsReadOnly] = useState(false);
     const [publicSceneName, setPublicSceneName] = useState('');
-    const currentSceneId = useSceneStore((state) => state.currentSceneId);
     
+    const currentSceneId = useSceneStore((state) => state.currentSceneId);
     const isSmall = deviceType === 'tablet' || deviceType === 'mobile';
     const localSt = "gridbuilders_tutorial_seen";
 
+    // ✅ ЭФФЕКТ 1: Только для загрузки публичной сцены по URL
+    // Зависит только от тех стейтов, которые меняет внутри
     useEffect(() => {
-        // ✅ Проверяем URL на наличие ?view=SCENE_ID
         const params = new URLSearchParams(window.location.search);
         const viewId = params.get('view');
 
         if (viewId) {
-            // Режим просмотра публичной сцены
             setIsReadOnly(true);
             getPublicScene(viewId)
                 .then((scene) => {
@@ -60,21 +62,27 @@ function App() {
                 .catch((err) => {
                     console.error(err);
                     alert("❌ Ошибка: Сцена не найдена или не является публичной.\n\n" + err.message);
-                    // Перенаправляем на главную
                     window.history.replaceState({}, '', window.location.origin);
                     setIsReadOnly(false);
                 });
-        } else {
-            // Обычный режим — проверяем авторизацию
-            checkUser();          
-            if (isSmall) {
-                const hasSeenTutorial = localStorage.getItem(localSt);
-                if (!hasSeenTutorial) {
-                    setShowTutorial(true);
-                }
+        }
+    }, [setIsReadOnly, setObjects, setPublicSceneName]);
+
+    // ✅ ЭФФЕКТ 2: Инициализация пользователя и туториала
+    // Запускается только если мы НЕ в режиме просмотра публичной сцены
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('view')) return; // Пропускаем, если грузим публичную сцену
+
+        checkUser();
+
+        if (isSmall) {
+            const hasSeenTutorial = localStorage.getItem(localSt);
+            if (!hasSeenTutorial) {
+                setShowTutorial(true);
             }
         }
-    }, [checkUser, isSmall]);
+    }, [isSmall, localSt, setShowTutorial]);
 
     if (isLoading && !isReadOnly) {
         return (
@@ -104,14 +112,15 @@ function App() {
                         <ProjectModal
                             onClose={() => setShowProjectModal(false)}
                             onOpenCollab={(sceneId) => {
-                                openCollabScene(sceneId)
-                                setShowProjectModal(false)
+                                openCollabScene(sceneId);
+                                setShowProjectModal(false);
                             }}
                         />
                     )}
                     {isSmall && <FullscreenOrientation />}
                 </>
             )}
+            
             <Scene_GB />
 
             {!isReadOnly && currentSceneId && (
@@ -128,11 +137,9 @@ function App() {
                         display: 'flex', alignItems: 'center', gap: 12,
                     }}>
                         Совместный режим 🟢
-                        <button className="closeBtn"
-                        onClick={closeCollabScene}
-                    >
-                        ✕ Закрыть
-                    </button>
+                        <button className="closeBtn" onClick={closeCollabScene}>
+                            ✕ Закрыть
+                        </button>
                 </div>
             )}
 
@@ -150,7 +157,7 @@ function App() {
                 </>
             )}
 
-            {/* ✅ Индикатор режима просмотра */}
+            {/* Индикатор режима просмотра */}
             {isReadOnly && (
                 <div style={{
                     position: 'fixed',
@@ -171,9 +178,7 @@ function App() {
                     gap: 8
                 }}>
                     👁️ {publicSceneName || 'Публичная сцена'}
-                    <button className="closeBtn"
-                        onClick={() => window.location.href = '/'}
-                    >
+                    <button className="closeBtn" onClick={() => window.location.href = '/'}>
                         ✕ Закрыть
                     </button>
                 </div>

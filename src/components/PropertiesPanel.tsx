@@ -1,5 +1,5 @@
 // /scr/components/PropertiesPanel.tsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSceneStore, type SceneObject } from '../store/sceneStore'
 import { useDeviceType } from '../hooks/useDeviceType';
 import { GradientPicker } from './GradientPicker';
@@ -125,10 +125,6 @@ export function PropertiesPanel() {
     const [stepValue, setStepValue] = useState(10);
     const AXIS_COLORS: [string, string, string] = ["#ff5f56", "#48ff73", "#1948ff"]
   
-    useEffect(() => {
-        setTempColor(null);
-    }, [selectedIds, setTempColor])         
-
     if (selectedIds.length === 0) {
         if (isSmall) {
             return null

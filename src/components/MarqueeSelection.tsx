@@ -1,5 +1,5 @@
 // src/components/MarqueeSelection.tsx
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import { useSceneStore } from "../store/sceneStore";
 import * as THREE from 'three'
@@ -17,7 +17,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
 
     const isCtrlRef = useRef(false)
 
-    const performSelection = () => {
+    const performSelection = useCallback(() => {
         const x1 = Math.min(startPosRef.current.x, endPosRef.current.x);
         const y1 = Math.min(startPosRef.current.y, endPosRef.current.y);
         const x2 = Math.max(startPosRef.current.x, endPosRef.current.x);
@@ -40,7 +40,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
         } else if (!isCtrlRef.current){
             onSelectionComplete([], false);
         }
-    }
+    }, [objects, onSelectionComplete, camera])
 
     useEffect(() => {
         const canvas = gl.domElement;
@@ -81,7 +81,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
             canvas.removeEventListener('pointermove', handlePointerMove);
             canvas.removeEventListener('pointerup', handlePointerUp);
         }
-    }, [camera, gl, objects, onMarqueeChange, onSelectionComplete, performSelection]);
+    }, [gl, onMarqueeChange, onSelectionComplete, performSelection]);
 
     return null;
 }
