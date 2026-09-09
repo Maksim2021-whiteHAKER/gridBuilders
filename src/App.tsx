@@ -13,40 +13,33 @@ import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
 import { getPublicScene, loadScene } from './lib/appwrite';
 import { useSceneStore } from './store/sceneStore';
 
-function App() {
-    const deviceType = useDeviceType();
-    const { checkUser, user, signOut, isLoading } = useAuthStore();
-    const { setObjects } = useSceneStore();
-
-    const openCollabScene = async (sceneId: string) => {
-        try {
-            const scene = await loadScene(sceneId);
-            setObjects(scene.data);
-            useSceneStore.getState().setCurrentSceneId(sceneId);
-            useSceneStore.getState().setOnline(true);
-        } catch (error: unknown) {
-            console.error("Ошибка загрузки сцены: " + error);
-        }
-    };
-
-    const closeCollabScene = () => {
-        useSceneStore.getState().setCurrentSceneId(null);
-        useSceneStore.getState().setOnline(false);
-        setObjects([]);
-    };
-
+// ✅ Хук для туториала — выносит setState из основного тела компонента
+function useTutorial(isSmall: boolean) {
     const [showTutorial, setShowTutorial] = useState(false);
-    const [showAuthModal, setShowAuthModal] = useState(false);
-    const [showProjectModal, setShowProjectModal] = useState(false);
-    const [isReadOnly, setIsReadOnly] = useState(false);
-    const [publicSceneName, setPublicSceneName] = useState('');
-    
-    const currentSceneId = useSceneStore((state) => state.currentSceneId);
-    const isSmall = deviceType === 'tablet' || deviceType === 'mobile';
     const localSt = "gridbuilders_tutorial_seen";
 
-    // ✅ ЭФФЕКТ 1: Только для загрузки публичной сцены по URL
-    // Зависит только от тех стейтов, которые меняет внутри
+    useEffect(() => {
+        if (!isSmall) return;
+        const hasSeenTutorial = localStorage.getItem(localSt);
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+        }
+    }, [isSmall, localSt]);
+
+    const closeTutorial = () => {
+        localStorage.setItem(localSt, "true");
+        setShowTutorial(false);
+    };
+
+    return { showTutorial, closeTutorial };
+}
+
+// ✅ Хук для публичной сцены — выносит setIsReadOnly из основного useEffect
+function usePublicScene() {
+    const [isReadOnly, setIsReadOnly] = useState(false);
+    const [publicSceneName, setPublicSceneName] = useState('');
+    const { setObjects } = useSceneStore();
+
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const viewId = params.get('view');
@@ -66,23 +59,52 @@ function App() {
                     setIsReadOnly(false);
                 });
         }
-    }, [setIsReadOnly, setObjects, setPublicSceneName]);
+    }, [setObjects]);
 
-    // ✅ ЭФФЕКТ 2: Инициализация пользователя и туториала
-    // Запускается только если мы НЕ в режиме просмотра публичной сцены
+    return { isReadOnly, publicSceneName };
+}
+
+function App() {
+    const deviceType = useDeviceType();
+    const { checkUser, user, signOut, isLoading } = useAuthStore();
+    const { setObjects } = useSceneStore();
+
+    // ✅ Туториал и публичная сцена — через хуки, setState больше не в основном теле
+    const { showTutorial, closeTutorial } = useTutorial(
+        deviceType === 'tablet' || deviceType === 'mobile'
+    );
+    const { isReadOnly, publicSceneName } = usePublicScene();
+
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showProjectModal, setShowProjectModal] = useState(false);
+
+    const currentSceneId = useSceneStore((state) => state.currentSceneId);
+    const isSmall = deviceType === 'tablet' || deviceType === 'mobile';
+
+    const openCollabScene = async (sceneId: string) => {
+        try {
+            const scene = await loadScene(sceneId);
+            setObjects(scene.data);
+            useSceneStore.getState().setCurrentSceneId(sceneId);
+            useSceneStore.getState().setOnline(true);
+        } catch (error: unknown) {
+            console.error("Ошибка загрузки сцены: " + error);
+        }
+    };
+
+    const closeCollabScene = () => {
+        useSceneStore.getState().setCurrentSceneId(null);
+        useSceneStore.getState().setOnline(false);
+        setObjects([]);
+    };
+
+    // ✅ Эффект авторизации — checkUser теперь в зависимостях
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('view')) return; // Пропускаем, если грузим публичную сцену
+        if (params.get('view')) return;
 
         checkUser();
-
-        if (isSmall) {
-            const hasSeenTutorial = localStorage.getItem(localSt);
-            if (!hasSeenTutorial) {
-                setShowTutorial(true);
-            }
-        }
-    }, [isSmall, localSt, setShowTutorial]);
+    }, [checkUser]);
 
     if (isLoading && !isReadOnly) {
         return (
@@ -96,14 +118,8 @@ function App() {
         );
     }
 
-    const closeTutorial = () => {
-        localStorage.setItem(localSt, "true");
-        setShowTutorial(false);
-    };
-
     return (
         <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
-            {/* Показываем модалки ТОЛЬКО если не режим просмотра */}
             {!isReadOnly && (
                 <>
                     {showTutorial && <MobileTutorial onClose={closeTutorial} />}
@@ -120,13 +136,13 @@ function App() {
                     {isSmall && <FullscreenOrientation />}
                 </>
             )}
-            
+
             <Scene_GB />
 
             {!isReadOnly && currentSceneId && (
-                <div 
+                <div
                     style={{
-                        position: 'fixed', 
+                        position: 'fixed',
                         bottom: 20, left: "50%",
                         transform: 'translateX(-50%)',
                         background: "rgba(72, 255, 115, 0.9)",
@@ -136,14 +152,13 @@ function App() {
                         zIndex: 1500,
                         display: 'flex', alignItems: 'center', gap: 12,
                     }}>
-                        Совместный режим 🟢
-                        <button className="closeBtn" onClick={closeCollabScene}>
-                            ✕ Закрыть
-                        </button>
+                    Совместный режим 🟢
+                    <button className="closeBtn" onClick={closeCollabScene}>
+                        ✕ Закрыть
+                    </button>
                 </div>
             )}
 
-            {/* Инструменты ТОЛЬКО если не режим просмотра */}
             {!isReadOnly && (
                 <>
                     <ToolBar
@@ -157,7 +172,6 @@ function App() {
                 </>
             )}
 
-            {/* Индикатор режима просмотра */}
             {isReadOnly && (
                 <div style={{
                     position: 'fixed',
