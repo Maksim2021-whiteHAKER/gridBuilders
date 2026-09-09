@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore'
-import { generatedId } from '../components/ToolBar';
+import { generatedId } from './generatedId';
 
 export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => void, onError: (error: string) => void) {
     const reader = new FileReader();

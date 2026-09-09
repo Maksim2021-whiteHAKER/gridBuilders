@@ -28,7 +28,7 @@ export async function exportToGLB(objects: SceneObject[], scene_name: string = "
 
     exporter.parse(
         tempScene, (result) => {
-            const blob = new Blob([result as ArrayBuffer], {type: 'application/octet-stream'});
+            const blob = new Blob([result as unknown as ArrayBuffer], {type: 'application/octet-stream'});
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
 

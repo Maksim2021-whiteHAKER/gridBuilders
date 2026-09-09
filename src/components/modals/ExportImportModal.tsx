@@ -1,4 +1,4 @@
-// src/components/ExportImportModal.tsx
+// src/components/modals/ExportImportModal.tsx
 import { useState } from 'react';
 
 type Mode = 'export' | 'import';

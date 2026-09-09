@@ -20,8 +20,8 @@ export function useDeviceType() {
 
         checkDevice()
         window.addEventListener('resize', checkDevice);
-        return () => removeEventListener('resize', checkDevice);
-    }, [])
+        return () => window.removeEventListener('resize', checkDevice);
+    }, [setDeviceType])
     return deviceType;
 }
 

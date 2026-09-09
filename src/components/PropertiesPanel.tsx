@@ -15,13 +15,12 @@ function AxisInput({ labelname, values, onChange, colors, multi }: {
 }) {
     return (
         <div>
-            <label className="labelStyle" style={{ display: 'block', marginBottom: 10, fontWeight: 500 }}>
-                {multi ? `${labelname} (ко всем)` : labelname}
-                <div style={{ display: 'flex', gap: 20, marginTop: 1 }}>
-                    {['X', 'Y', 'Z'].map((axis, i) => (
-                        <span key={axis} style={{ color: colors[i], fontSize: 12, marginBottom: 2 }}>{axis}</span>
-                    ))}
-                </div>
+            {multi ? `${labelname} (ко всем)` : labelname}
+            <div style={{ display: 'flex', gap: 20, marginTop: 1 }}>
+                {['X', 'Y', 'Z'].map((axis, i) => (
+                    <span key={axis} style={{ color: colors[i], fontSize: 12, marginBottom: 2 }}>{axis}</span>
+                ))}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                 {values.map((v, i) => (
                     <div key={i} style={{ position: 'relative' }}>
@@ -46,7 +45,6 @@ function AxisInput({ labelname, values, onChange, colors, multi }: {
                     </div>
                 ))}
             </div>
-            </label>
         </div>
     );
 }
@@ -113,7 +111,11 @@ function changeMaterialProp(
 } 
 
 export function PropertiesPanel() {
-    const { selectedIds, updateObj, deleteObj, clearSelection } = useSceneStore()
+    const selectedIds = useSceneStore((state) => state.selectedIds);
+    const updateObj = useSceneStore((state) => state.updateObj);
+    const deleteObj = useSceneStore((state) => state.deleteObj);
+    const clearSelection = useSceneStore((state) => state.clearSelection)
+
     const objects = useSceneStore((state) => state.objects);
     const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
     const deviceType = useDeviceType();
@@ -147,7 +149,6 @@ export function PropertiesPanel() {
 
     const isMultiObj = selectedIds.length > 1;
     const firstObj = selectedObjects[0] ?? null;
-    const displayColor = tempColor || (firstObj?.color ?? "#ffffff");
 
     const getGradientPreview = () => {
         if (!firstObj) return undefined
@@ -193,10 +194,12 @@ export function PropertiesPanel() {
         selectedObjects.forEach((obj) => { updateObj(obj.id, { color: value }, true)})
     }
 
-    const handleColorFinalChange = (value: string) => {
+    const handleColorFinalChange = (e: React.MouseEvent<HTMLInputElement>) => {
+        const value = e.currentTarget.value;
         if (!isValidHex(value)) return
         setTempColor(null);
-        selectedObjects.forEach((obj) => { updateObj(obj.id, { color: value }, false)})
+        const finalColor = tempColor ?? firstObj.color;
+        selectedObjects.forEach((obj) => { updateObj(obj.id, { color: finalColor }, false)})
     }
 
     const deleteAll = () => {
@@ -301,10 +304,10 @@ export function PropertiesPanel() {
                                 <div style={{display: "flex", gap: 6, alignItems: "center", marginRight: "auto"}}>
                                     <input type="color" value={firstObj.color}
                                     onChange={(e) => handleColorChange(e.target.value)}
-                                    onMouseUp={() => handleColorFinalChange(displayColor)}
+                                    onMouseUp={() => handleColorFinalChange}
                                     style={{gridColumn: 2, width: 30, height: 30, border: "none", borderRadius: 8, 
                                     background: "none"}} />
-                                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
+                                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange}
                                     style={{background: "#0a0b15", border: "1px solid #2e303a", color: "#e4e4e7", padding: "4px 6px", borderRadius: 8,
                                     fontSize: 14, width: 110 }} />
                                 </div>
@@ -529,9 +532,9 @@ export function PropertiesPanel() {
                 </div>
                     {!firstObj.useGradient ? (
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
+                            <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange}
                                 style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
-                            <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange(displayColor)}
+                            <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange}
                                 style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }} />
                         </div>
                     ) : (

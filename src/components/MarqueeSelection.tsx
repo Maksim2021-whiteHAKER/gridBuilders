@@ -17,6 +17,31 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
 
     const isCtrlRef = useRef(false)
 
+    const performSelection = () => {
+        const x1 = Math.min(startPosRef.current.x, endPosRef.current.x);
+        const y1 = Math.min(startPosRef.current.y, endPosRef.current.y);
+        const x2 = Math.max(startPosRef.current.x, endPosRef.current.x);
+        const y2 = Math.max(startPosRef.current.y, endPosRef.current.y);
+
+        if (x2 - x1 >= 5 || y2 - y1 >= 5) {
+            const newSelection: string[] = [];  
+            objects.forEach((obj) => {
+                const vector = new THREE.Vector3(...obj.position);
+    
+                vector.project(camera);
+                const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const screenY = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+    
+                if (screenX >= x1 && screenX <= x2 && screenY >= y1 && screenY <= y2) {
+                    newSelection.push(obj.id);
+                }
+            });
+            onSelectionComplete(newSelection,isCtrlRef.current)
+        } else if (!isCtrlRef.current){
+            onSelectionComplete([], false);
+        }
+    }
+
     useEffect(() => {
         const canvas = gl.domElement;
 
@@ -57,31 +82,6 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
             canvas.removeEventListener('pointerup', handlePointerUp);
         }
     }, [camera, gl, objects, onMarqueeChange, onSelectionComplete]);
-
-    const performSelection = () => {
-        const x1 = Math.min(startPosRef.current.x, endPosRef.current.x);
-        const y1 = Math.min(startPosRef.current.y, endPosRef.current.y);
-        const x2 = Math.max(startPosRef.current.x, endPosRef.current.x);
-        const y2 = Math.max(startPosRef.current.y, endPosRef.current.y);
-
-        if (x2 - x1 >= 5 || y2 - y1 >= 5) {
-            const newSelection: string[] = [];  
-            objects.forEach((obj) => {
-                const vector = new THREE.Vector3(...obj.position);
-    
-                vector.project(camera);
-                const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
-                const screenY = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
-    
-                if (screenX >= x1 && screenX <= x2 && screenY >= y1 && screenY <= y2) {
-                    newSelection.push(obj.id);
-                }
-            });
-            onSelectionComplete(newSelection,isCtrlRef.current)
-        } else if (!isCtrlRef.current){
-            onSelectionComplete([], false);
-        }
-    }
 
     return null;
 }

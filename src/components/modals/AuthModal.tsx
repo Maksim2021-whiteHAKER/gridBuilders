@@ -1,6 +1,6 @@
-// src/components/AuthModal.tsx
+// src/components/modals/AuthModal.tsx
 import { useState } from "react";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore } from "../../store/authStore";
 
 export function AuthModal({ onClose }: { onClose: () => void }) {
     const [isLogin, setIsLogin] = useState(true)

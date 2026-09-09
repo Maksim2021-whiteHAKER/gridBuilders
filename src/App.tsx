@@ -7,8 +7,8 @@ import { useDeviceType } from './hooks/useDeviceType.ts';
 import { MobileTutorial } from './components/tutorials/MobileTutorial.tsx';
 import { CameraControls } from './components/CameraControls.tsx';
 import { useAuthStore } from './store/authStore';
-import { AuthModal } from './components/AuthModal';
-import { ProjectModal } from './components/ProjectModal.tsx';
+import { AuthModal } from './components/modals/AuthModal.tsx';
+import { ProjectModal } from './components/modals/ProjectModal.tsx';
 import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
 import { getPublicScene, loadScene } from './lib/appwrite'; // ✅ Импортируем функцию
 import { useSceneStore } from './store/sceneStore';
@@ -41,7 +41,7 @@ function App() {
     const currentSceneId = useSceneStore((state) => state.currentSceneId);
     
     const isSmall = deviceType === 'tablet' || deviceType === 'mobile';
-    let localSt = "gridbuilders_tutorial_seen";
+    const localSt = "gridbuilders_tutorial_seen";
 
     useEffect(() => {
         // ✅ Проверяем URL на наличие ?view=SCENE_ID
@@ -49,6 +49,7 @@ function App() {
         const viewId = params.get('view');
 
         if (viewId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect — синхронизация с URL-параметром
             // Режим просмотра публичной сцены
             setIsReadOnly(true);
             getPublicScene(viewId)

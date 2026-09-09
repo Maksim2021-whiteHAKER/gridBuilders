@@ -2,8 +2,10 @@
 import { useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
 import { useDeviceType } from '../hooks/useDeviceType';
-import { ExportImportModal } from './ExportImportModal';
+import { ExportImportModal } from './modals/ExportImportModal';
 import type { Models } from 'appwrite';
+import { generatedId } from '../utils/generatedId';
+import { SupportModal } from './modals/SupportModal';
 
 type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
 
@@ -18,13 +20,6 @@ const OBJECT_TYPES: {value: ObjectType, name: string, icon: string}[] = [
     { value: 'pyramid', name: 'Пирамида', icon: '🔺'},
     { value: 'text', name: 'Текст', icon: '🔤'}
 ]
-
-export function generatedId() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    return "obj_" + Date.now() + Math.random().toString(36).substring(2, 9);
-}
 
 function handleImportType(acceptImport: string, importType: ImportType ) {
     const input = document.createElement('input');
@@ -70,7 +65,15 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     const importToGLB = useSceneStore((state) => state.importGLB);
     const importToOBJ = useSceneStore((state) => state.importOBJ);
 
-    const { transformMode, setTransformMode, selectedIds, undo, redo, canUndo, canRedo, snapEnabled, toggleSnap } = useSceneStore();
+    const transformMode = useSceneStore((state) => state.transformMode);
+    const setTransformMode = useSceneStore((state) => state.setTransformMode)
+    const selectedIds = useSceneStore((state) => state.selectedIds);
+    const undo = useSceneStore((state) => state.undo)
+    const redo = useSceneStore((state) => state.redo)
+    const canUndo = useSceneStore((state) => state.canUndo)
+    const canRedo = useSceneStore((state) => state.canRedo)
+    const snapEnabled = useSceneStore((state) => state.snapEnabled);
+    const toggleSnap = useSceneStore((state) => state.toggleSnap);
 
     const deviceType = useDeviceType();
     const isSmall = deviceType === 'mobile' || deviceType === 'tablet';
@@ -78,6 +81,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     const [isExpandedAutorized, setIsExpandedAutorized] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showSupport, setShowSupport] = useState(false);
 
     const handleAddObject = () => {
         const newObject = {
@@ -239,6 +243,10 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                                 gap: 6, marginTop: "5px"
                             }}>
                             {user ? "📁 Мои проекты" : "🔐 Войти для доступа к облаку"}
+                        </button>
+                        <button className="supportBtn"
+                            onClick={() => setShowSupport(true)} title='Поддержать проект'>
+                            💖 ПОДДЕРЖАТЬ
                         </button>
                     </div>
                 )}
@@ -436,7 +444,12 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     }}>
                     {user ? "📁 Мои проекты" : "🔐 Войти для доступа к облаку"}
                 </button>
+                <button className="supportBtn"
+                    onClick={() => setShowSupport(true)} title='Поддержать проект'>
+                    💖 ПОДДЕРЖАТЬ
+                </button>
             </div>
+            {showSupport && <SupportModal onClose={() => setShowSupport(false)}/>}
         </div>
     )
 }

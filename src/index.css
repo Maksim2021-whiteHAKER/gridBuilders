@@ -167,6 +167,23 @@ button:focus-visible {
   font-size: 12px 
 }
 
+.supportBtn {
+  padding: 8px; 
+  margin: 4px; 
+  background: rgba(200, 20, 200, 0.70);
+  border: 1px solid #2e303a;
+  border-radius: 25px;
+  color: rgb(252, 239, 154);  
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.supportBtn:hover {
+  background: rgba(22, 227, 3, 0.7);
+  border-color: #e4e4e7;
+  transform: scale(0.9);
+}
+
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
   20% { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -177,6 +194,10 @@ button:focus-visible {
 @keyframes pulse {
   0%, 100% {opacity: 0.3 }
   50% {opacity: 0.6 }
+}
+
+@keyframes big_min {
+  0%, 100% {transform: scale(0.5);}
 }
 
 @media screen and (orientation: landscape) and (max-height: 500){

@@ -154,7 +154,7 @@ export function GroupTransformControls({
         };
         window.addEventListener('pointerup', handleGlobalPointerUp);
         return () => window.removeEventListener('pointerup', handleGlobalPointerUp);
-    }, []);
+    }, [handleEnd]);
 
     if (selectedIds.length <= 1) {
         return null;

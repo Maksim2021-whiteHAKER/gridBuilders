@@ -22,7 +22,7 @@ export function FullscreenOrientation() {
             window.removeEventListener("resize", checkOrientation);
             document.removeEventListener("fullscreenchange", fullscreenChange)
         }
-    }, []);
+    }, [setIsPortrait, setIsFullscreen]);
 
     const toggleFullscreen = async () => {
         try {

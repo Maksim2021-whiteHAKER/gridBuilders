@@ -1,9 +1,9 @@
-// src/components/ProjectModal.tsx
-import { useState, useEffect } from "react";
-import { useAuthStore } from "../store/authStore";
-import { useSceneStore } from "../store/sceneStore";
-import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../lib/appwrite";
-import type { SceneListItem } from "../typesAppwrite";
+// // src/components/modals/ProjectModal.tsx
+import { useState, useEffect, useCallback } from "react";
+import { useAuthStore } from "../../store/authStore";
+import { useSceneStore } from "../../store/sceneStore";
+import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../../lib/appwrite";
+import type { SceneListItem } from "../../typesAppwrite";
 
 interface ProjectModalProps {
     onClose: () => void;
@@ -12,7 +12,6 @@ interface ProjectModalProps {
 
 export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
     const user = useAuthStore((state) => state.user);
-    const { setObjects, objects } = useSceneStore();
 
     const [scenes, setScenes] = useState<SceneListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,15 +23,10 @@ export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
     const [editName, setEditName] = useState("");
     const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
 
+    const setObjects = useSceneStore((state) => state.setObjects);
 
-    useEffect(() => {
+    const fetchScenes = useCallback(async () => {
         if (!user) return;
-        fetchScenes();
-    }, []);
-
-    if (!user) return null;
-
-    const fetchScenes = async () => {
         setIsLoading(true);
         setError("");
         try {
@@ -46,7 +40,13 @@ export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [user, sortBy])
+
+    useEffect(() => {
+        fetchScenes();
+    }, [fetchScenes]);
+
+    if (!user) return null;
 
     const save = async () => {
         if (!sceneName.trim()) {
@@ -56,7 +56,7 @@ export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
         setIsSaving(true);
         setError("");
         try {
-            const currentObjects = objects;
+            const currentObjects = useSceneStore.getState().objects.filter(o => !o.deleted);
             await saveScene(user.$id, sceneName, { objects: currentObjects });
             setSceneName("Моя сцена");
             await fetchScenes();
@@ -117,8 +117,8 @@ export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
         try {
             await navigator.clipboard.writeText(shareUrl);
             alert("Ссылка скопирована в буфер обмена!\n" + shareUrl);
-        } catch (err) {
-            setError("Не удалось скопировать ссылку");
+        } catch (err: unknown) {
+            setError("Не удалось скопировать ссылку: " + err);
         }
     };
 
