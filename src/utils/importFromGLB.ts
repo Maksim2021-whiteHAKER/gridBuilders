@@ -49,20 +49,23 @@ export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => 
 }
 
 function convertMeshToObject(mesh: THREE.Mesh): SceneObject | null {
-    let type: SceneObject['type'] = 'box';
     const geometry = mesh.geometry;
+    let type: SceneObject['type'];
 
-    if (geometry.type === 'BoxGeometry') type = 'box';
-    else if (geometry.type === 'SphereGeometry') type = 'sphere';
-    else if (geometry.type === 'CylinderGeometry') type = 'cylinder';
-    else if (geometry.type === 'ConeGeometry') {    
-        const isPyramid = (mesh.userData as { isPyramid?: boolean })?.isPyramid === true;
-        type = isPyramid ? 'pyramid' : 'cone';
+
+    switch (geometry.type) {
+        case 'BoxGeometry': type = 'box'; break;
+        case 'SphereGeometry': type = 'sphere'; break;
+        case 'CylinderGeometry': type = 'cylinder'; break;
+        case 'TorusGeometry': type = 'tor'; break;
+        case 'ConeGeometry': {
+            const isPyramid = (mesh.userData as { isPyramid?: boolean })?.isPyramid === true;
+            type = isPyramid ? 'pyramid' : 'cone';
+            break;
+        }
+        default: type = 'box'; break;
     }
   
-    else if (geometry.type === 'TorusGeometry') type = 'tor';
-    else type = 'box';
-
     const material = mesh.material as THREE.MeshStandardMaterial;
     let color = "#bf8ff3";
     let opacity = 1.0;

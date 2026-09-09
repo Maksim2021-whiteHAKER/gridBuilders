@@ -127,7 +127,7 @@ export function PropertiesPanel() {
   
     useEffect(() => {
         setTempColor(null);
-    }, [selectedIds])         
+    }, [selectedIds, setTempColor])         
 
     if (selectedIds.length === 0) {
         if (isSmall) {
@@ -191,15 +191,17 @@ export function PropertiesPanel() {
     const handleColorChange = (value: string) => {
         if (!isValidHex(value)) return
         setTempColor(value);
-        selectedObjects.forEach((obj) => { updateObj(obj.id, { color: value }, true)})
+        selectedObjects.forEach((obj) => {
+             updateObj(obj.id, { color: value }, true)
+        })
     }
 
-    const handleColorFinalChange = (e: React.MouseEvent<HTMLInputElement>) => {
-        const value = e.currentTarget.value;
-        if (!isValidHex(value)) return
-        setTempColor(null);
+    const handleColorFinalChange = () => {
         const finalColor = tempColor ?? firstObj.color;
-        selectedObjects.forEach((obj) => { updateObj(obj.id, { color: finalColor }, false)})
+        selectedObjects.forEach((obj) => { 
+            updateObj(obj.id, { color: finalColor }, false)
+        })
+        setTempColor(null);
     }
 
     const deleteAll = () => {
@@ -304,10 +306,12 @@ export function PropertiesPanel() {
                                 <div style={{display: "flex", gap: 6, alignItems: "center", marginRight: "auto"}}>
                                     <input type="color" value={firstObj.color}
                                     onChange={(e) => handleColorChange(e.target.value)}
-                                    onMouseUp={() => handleColorFinalChange}
+                                    onMouseUp={() => handleColorFinalChange()}
                                     style={{gridColumn: 2, width: 30, height: 30, border: "none", borderRadius: 8, 
                                     background: "none"}} />
-                                    <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange}
+                                    <input type="text" value={firstObj.color} 
+                                    onChange={(e) => handleColorChange(e.target.value)} 
+                                    onMouseUp={() => handleColorFinalChange()}
                                     style={{background: "#0a0b15", border: "1px solid #2e303a", color: "#e4e4e7", padding: "4px 6px", borderRadius: 8,
                                     fontSize: 14, width: 110 }} />
                                 </div>
@@ -532,9 +536,13 @@ export function PropertiesPanel() {
                 </div>
                     {!firstObj.useGradient ? (
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <input type="color" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange}
+                            <input type="color" value={firstObj.color} 
+                            onChange={(e) => handleColorChange(e.target.value)} 
+                            onMouseUp={() => handleColorFinalChange()}
                                 style={{ width: 40, height: 32, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
-                            <input type="text" value={firstObj.color} onChange={(e) => handleColorChange(e.target.value)} onMouseUp={() => handleColorFinalChange}
+                            <input type="text" value={firstObj.color} 
+                            onChange={(e) => handleColorChange(e.target.value)} 
+                            onMouseUp={() => handleColorFinalChange()}
                                 style={{ flex: 1, padding: '6px 8px', background: '#14151f', border: '1px solid #2e303a', borderRadius: 4, color: '#e4e4e7', fontSize: 12 }} />
                         </div>
                     ) : (

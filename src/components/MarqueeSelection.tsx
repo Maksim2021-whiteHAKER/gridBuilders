@@ -81,7 +81,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
             canvas.removeEventListener('pointermove', handlePointerMove);
             canvas.removeEventListener('pointerup', handlePointerUp);
         }
-    }, [camera, gl, objects, onMarqueeChange, onSelectionComplete]);
+    }, [camera, gl, objects, onMarqueeChange, onSelectionComplete, performSelection]);
 
     return null;
 }

@@ -3,66 +3,8 @@ import * as THREE from 'three'
 import { GLTFExporter } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore';
 
-export async function exportToGLB(objects: SceneObject[], scene_name: string = "scene") {
-    const tempScene = new THREE.Scene();
-    const texturePromises: Promise<void>[] = [];
-
-    objects.forEach((objData: SceneObject) => {
-        const { mesh, texturePromise } = createMeshFromData(objData)
-        if (mesh) {
-            tempScene.add(mesh)
-            if (texturePromise) {
-                texturePromises.push(texturePromise)
-            }
-        }
-    });
-
-    await Promise.all(texturePromises)
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-    directionalLight.position.set(10, 10, 10);
-    directionalLight.castShadow = true;
-    tempScene.add(directionalLight)
-
-    const exporter = new GLTFExporter();
-
-    exporter.parse(
-        tempScene, (result) => {
-            const blob = new Blob([result as unknown as ArrayBuffer], {type: 'application/octet-stream'});
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-
-            link.href = url;
-            link.download = `${scene_name || 'gridbuilders_scene'}.glb`;
-            document.body.appendChild(link)
-            link.click();
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
-        }, (error) => {
-            console.error("Ошибка экспорта в GLB: "+error)
-            alert("Произошла ошибка экспорта в GLB")
-        }, {
-            binary: true,
-            includeCustomExtensions: false,
-            forceIndices: true,
-            truncateDrawRange: true,
-            animations: [],
-            onlyVisible: true,
-        }
-    );
-
-    tempScene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
-            obj.geometry.dispose()
-            if (obj.material instanceof THREE.Material) {
-                obj.material.dispose();
-            }
-        }
-    })
-}
-
-function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | null, texturePromise?: Promise<void> } {
-    let geometry: THREE.BufferGeometry | null = null
+export function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | null, texturePromise?: Promise<void> } {
+    let geometry: THREE.BufferGeometry;
     const size = 512;
 
     switch (objData.type) {
@@ -72,18 +14,22 @@ function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | null, tex
         case 'cone': geometry = new THREE.ConeGeometry(0.5, 1, 10, 32); break;
         case 'tor': geometry = new THREE.TorusGeometry(0.5, 0.2, 16, 32); break;
         case 'pyramid': geometry = new THREE.ConeGeometry(0.5, 1, 4, 1); break;
-        default: return {mesh: null}
+        default: return {mesh: null} 
     }
 
     const hasTexture = objData.useGradient || objData.textureUrl;
+
+    const baseColorHex = typeof objData.color === 'string'
+        ? new THREE.Color(objData.color).getHex()
+        : 0xbf8ff3;
     
     const material = new THREE.MeshStandardMaterial({ 
-        color: hasTexture ? 0xffffff : (objData.color || '#bf8ff3'),
+        color: hasTexture ? 0xffffff : baseColorHex,
         transparent: objData.opacity !== undefined && objData.opacity < 1,
-        opacity: objData.opacity !== undefined ? objData.opacity : 1.0,
-        metalness: objData.metalness || 0.0, 
-        roughness: objData.roughness || 0.5,
-        wireframe: objData.wireframe || false,
+        opacity: objData.opacity ?? 1.0,
+        metalness: objData.metalness ?? 0.0, 
+        roughness: objData.roughness ?? 0.5,
+        wireframe: !!objData.wireframe,
         side: THREE.DoubleSide
     });
 
@@ -158,4 +104,80 @@ function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | null, tex
     mesh.receiveShadow = true;
 
     return {mesh, texturePromise};
+}
+
+export async function exportToGLB(objects: SceneObject[], scene_name: string = "scene") {
+    const tempScene = new THREE.Scene();
+    const texturePromises: Promise<void>[] = [];
+
+    for (const objData of objects) {
+        const { mesh, texturePromise } = createMeshFromData(objData)
+        if (mesh) {
+            tempScene.add(mesh)
+            if (texturePromise) {
+                texturePromises.push(texturePromise)
+            }
+        }
+    }
+
+    await Promise.all(texturePromises).catch((err) => {
+        console.error('Ошибка при загрузке текстур перед экспортом:', err);
+        throw err;
+    })
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    directionalLight.position.set(10, 10, 10);
+    directionalLight.castShadow = true;
+    tempScene.add(directionalLight)
+
+    const exporter = new GLTFExporter();
+
+    return new Promise<void>((resolve, reject) => {       
+        exporter.parse(
+            tempScene, (result) => {
+                try {
+                    const blob = new Blob([result as unknown as ArrayBuffer], {type: 'application/octet-stream'});
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");   
+                    link.href = url;
+                    link.download = `${scene_name || 'gridbuilders_scene'}.glb`;
+                    document.body.appendChild(link)
+                    link.click();
+                    document.body.removeChild(link)
+                    URL.revokeObjectURL(url)
+                    disposeScene(tempScene);
+                    resolve()
+                } catch (e) {
+                    disposeScene(tempScene);
+                    reject(e as Error)
+                }
+            }, (error) => {
+                console.error("Ошибка экспорта в GLB: " + error)
+                disposeScene(tempScene);
+                reject(new Error("Произошла ошибка экспорта в GLB"))
+            }, {
+                binary: true,
+                includeCustomExtensions: false,
+                forceIndices: true,
+                truncateDrawRange: true,
+                animations: [],
+                onlyVisible: true,
+            }
+        );
+    })
+}
+
+function disposeScene(scene: THREE.Scene) {
+    scene.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+            obj.geometry.dispose()
+            const mat = obj.material
+            if (mat instanceof THREE.MeshStandardMaterial) {
+                if (mat.map) mat.map.dispose()
+                mat.dispose()
+            } else if (mat instanceof THREE.Material) {
+                mat.dispose()
+            }
+        }
+    })
 }

@@ -49,7 +49,6 @@ function App() {
         const viewId = params.get('view');
 
         if (viewId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect — синхронизация с URL-параметром
             // Режим просмотра публичной сцены
             setIsReadOnly(true);
             getPublicScene(viewId)
@@ -67,8 +66,7 @@ function App() {
                 });
         } else {
             // Обычный режим — проверяем авторизацию
-            checkUser();
-            
+            checkUser();          
             if (isSmall) {
                 const hasSeenTutorial = localStorage.getItem(localSt);
                 if (!hasSeenTutorial) {
@@ -76,7 +74,7 @@ function App() {
                 }
             }
         }
-    }, [checkUser, isSmall, setObjects]);
+    }, [checkUser, isSmall]);
 
     if (isLoading && !isReadOnly) {
         return (

@@ -34,7 +34,7 @@ export function FullscreenOrientation() {
                 setIsFullscreen(false)
             }
         } catch (err) {
-            console.error("Ошибка полноэкранного режима");
+            console.error("Ошибка полноэкранного режима: " + err);
         }
     }
 

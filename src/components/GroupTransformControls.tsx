@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from "react"
+import { useEffect, useRef, useMemo, useState, useCallback } from "react"
 import { TransformControls } from "@react-three/drei"
 import * as THREE from 'three'
 import type { SceneObject } from "../store/sceneStore"
@@ -63,7 +63,7 @@ export function GroupTransformControls({
     }, [centerOfMass]);
 
     // 3. Начало перетаскивания
-    const handleStart = () => {
+    const handleStart = useCallback(() => {
         if (!pivotRef.current) return;
         
         isDragging.current = true;
@@ -84,18 +84,18 @@ export function GroupTransformControls({
                 initialObjectScale.current.set(id, [...obj.scale] as [number, number, number]);
             }
         });
-    };
+    }, [selectedIds, objects]);
 
     // 4. Окончание перетаскивания
-    const handleEnd = () => {
+    const handleEnd = useCallback(() => {
         isDragging.current = false;
         initialObjectPos.current.clear();
         initialObjectRotation.current.clear();
         initialObjectScale.current.clear();
-    };
+    }, []);
 
     // 5. ✅ ОПТИМИЗАЦИЯ: Расчет дельты вынесен ЗА пределы цикла forEach
-    const handleObjectChange = () => {
+    const handleObjectChange = useCallback(() => {
         const currentPivotRef = pivotRef.current;
         if (!currentPivotRef || !isDragging.current) return;
         
@@ -143,7 +143,7 @@ export function GroupTransformControls({
                 });
             }
         });
-    };
+    }, [selectedIds, transformMode, snapEnabled, gridSize, updateObj]);
 
     // 6. Глобальный обработчик отпускания мыши (страховка)
     useEffect(() => {

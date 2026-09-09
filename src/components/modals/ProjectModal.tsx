@@ -1,5 +1,5 @@
 // // src/components/modals/ProjectModal.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "../../store/authStore";
 import { useSceneStore } from "../../store/sceneStore";
 import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../../lib/appwrite";
@@ -25,7 +25,7 @@ export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
 
     const setObjects = useSceneStore((state) => state.setObjects);
 
-    const fetchScenes = useCallback(async () => {
+    const fetchScenes = async () => {
         if (!user) return;
         setIsLoading(true);
         setError("");
@@ -40,11 +40,37 @@ export function ProjectModal({ onClose, onOpenCollab }: ProjectModalProps) {
         } finally {
             setIsLoading(false);
         }
-    }, [user, sortBy])
-
+    };
+    
     useEffect(() => {
-        fetchScenes();
-    }, [fetchScenes]);
+        if (!user) return;
+    
+        let isActive = true;
+    
+        const doFetch = async () => {
+            setIsLoading(true);
+            setError("");
+            try {
+                const data = await loadScenes(user.$id);
+                if (!isActive) return; // защита от гонки
+                const sorted = sortBy === 'date'
+                    ? data.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                    : data.sort((a, b) => a.name.localeCompare(b.name));
+                setScenes(sorted);
+            } catch (error: unknown) {
+                if (!isActive) return;
+                if (error instanceof Error) setError("Ошибка загрузки списка проектов: " + error.message);
+            } finally {
+                if (isActive) setIsLoading(false);
+            }
+        };
+    
+        doFetch();
+    
+        return () => {
+            isActive = false;
+        };
+    }, [user, sortBy]);   
 
     if (!user) return null;
 
