@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 import { useThree } from "@react-three/fiber";
-import * as THREE from 'three'
+import { Vector3 } from 'three'
 import { useDeviceType } from "../hooks/useDeviceType";
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import { calculateCenter } from "../utils/calculateCenter";
 
 export function KeyboardShortcuts() {
     const controls = useThree((state) => state.controls) as unknown as {
-        target: THREE.Vector3;
+        target: Vector3;
         update: () => void;
     };
     const { selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll, objects } = useSceneStore();

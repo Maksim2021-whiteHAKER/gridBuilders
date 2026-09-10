@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import * as THREE from 'three';
+import { Euler, Vector3, Quaternion } from 'three';
 import { useSceneStore } from '../store/sceneStore';
 
 export function CameraControls() {
@@ -16,7 +16,7 @@ export function CameraControls() {
         setPrevCamera(camera);
         if (camera) {
             setPos({ x: camera.position.x, y: camera.position.y, z: camera.position.z });
-            const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+            const euler = new Euler().setFromQuaternion(camera.quaternion, 'YXZ');
             setRot({ x: euler.x * (180 / Math.PI), y: euler.y * (180 / Math.PI), z: euler.z * (180 / Math.PI) });
         }
     }
@@ -30,7 +30,7 @@ export function CameraControls() {
 
         camera.position.setComponent(axisIndex, clampedValue)
 
-        const direction = new THREE.Vector3()
+        const direction = new Vector3()
             .subVectors(controls.target, camera.position)
             .normalize()
         const distance = camera.position.distanceTo(controls.target)
@@ -51,7 +51,7 @@ export function CameraControls() {
         const clampedValue = Math.max(-180, Math.min(180, value));
         setRot(prev => ({ ...prev, [axis]: clampedValue }));
         
-        const currentEuler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+        const currentEuler = new Euler().setFromQuaternion(camera.quaternion, 'YXZ');
         const rads = {
             x: axis === 'x' ? clampedValue * (Math.PI / 180) : currentEuler.x,
             y: axis === 'y' ? clampedValue * (Math.PI / 180) : currentEuler.y,
@@ -59,12 +59,12 @@ export function CameraControls() {
         };
         
         // Принудительно обновляем кватернион и матрицу камеры
-        const newQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(rads.x, rads.y, rads.z, 'YXZ'));
+        const newQuaternion = new Quaternion().setFromEuler(new Euler(rads.x, rads.y, rads.z, 'YXZ'));
         camera.quaternion.copy(newQuaternion);
         camera.updateMatrixWorld(true);
         
         // Обновляем target, чтобы камера смотрела вперед
-        const direction = new THREE.Vector3(0, 0, -1);
+        const direction = new Vector3(0, 0, -1);
         direction.applyQuaternion(camera.quaternion);
         controls.target.copy(camera.position).add(direction.multiplyScalar(10));
         controls.update();
@@ -87,7 +87,7 @@ export function CameraControls() {
         controls.update()
 
         setPos({ x: 25, y: 25, z: 25 });
-        const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+        const euler = new Euler().setFromQuaternion(camera.quaternion, 'YXZ');
         setRot({
             x: euler.x * (180 / Math.PI),
             y: euler.y * (180 / Math.PI),

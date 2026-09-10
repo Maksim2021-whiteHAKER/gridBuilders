@@ -1,36 +1,36 @@
 // src/utils/exportToGLB.ts
-import * as THREE from 'three'
+import { BoxGeometry, SphereGeometry, CylinderGeometry, ConeGeometry, TorusGeometry, Color, Mesh, BufferGeometry, MeshStandardMaterial, DoubleSide, CanvasTexture, TextureLoader, Scene, DirectionalLight, Material} from 'three'
 import { GLTFExporter } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore';
 
-export function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | null, texturePromise?: Promise<void> } {
-    let geometry: THREE.BufferGeometry;
+export function createMeshFromData(objData: SceneObject): {mesh: Mesh | null, texturePromise?: Promise<void> } {
+    let geometry: BufferGeometry;
     const size = 512;
 
     switch (objData.type) {
-        case 'box': geometry = new THREE.BoxGeometry(1, 1, 1); break;
-        case 'sphere': geometry = new THREE.SphereGeometry(0.5, 32, 32); break;
-        case 'cylinder': geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32 ); break;
-        case 'cone': geometry = new THREE.ConeGeometry(0.5, 1, 10, 32); break;
-        case 'tor': geometry = new THREE.TorusGeometry(0.5, 0.2, 16, 32); break;
-        case 'pyramid': geometry = new THREE.ConeGeometry(0.5, 1, 4, 1); break;
+        case 'box': geometry = new BoxGeometry(1, 1, 1); break;
+        case 'sphere': geometry = new SphereGeometry(0.5, 32, 32); break;
+        case 'cylinder': geometry = new CylinderGeometry(0.5, 0.5, 1, 32 ); break;
+        case 'cone': geometry = new ConeGeometry(0.5, 1, 10, 32); break;
+        case 'tor': geometry = new TorusGeometry(0.5, 0.2, 16, 32); break;
+        case 'pyramid': geometry = new ConeGeometry(0.5, 1, 4, 1); break;
         default: return {mesh: null} 
     }
 
     const hasTexture = objData.useGradient || objData.textureUrl;
 
     const baseColorHex = typeof objData.color === 'string'
-        ? new THREE.Color(objData.color).getHex()
+        ? new Color(objData.color).getHex()
         : 0xbf8ff3;
     
-    const material = new THREE.MeshStandardMaterial({ 
+    const material = new MeshStandardMaterial({ 
         color: hasTexture ? 0xffffff : baseColorHex,
         transparent: objData.opacity !== undefined && objData.opacity < 1,
         opacity: objData.opacity ?? 1.0,
         metalness: objData.metalness ?? 0.0, 
         roughness: objData.roughness ?? 0.5,
         wireframe: !!objData.wireframe,
-        side: THREE.DoubleSide
+        side: DoubleSide
     });
 
     let texturePromise: Promise<void> | undefined;
@@ -63,13 +63,13 @@ export function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | nu
             ctx.fillRect(0, 0, size, size)
         };
 
-        material.map = new THREE.CanvasTexture(canvas);
+        material.map = new CanvasTexture(canvas);
         material.color.set(0xffffff); // Сбрасываем цвет в белый для текстур
 
     } else if (objData.textureUrl) {
         const url = objData.textureUrl;
         texturePromise = new Promise((resolve, reject) => {
-            new THREE.TextureLoader().load(url, (loadedTex) => {
+            new TextureLoader().load(url, (loadedTex) => {
                 material.map = loadedTex
                 material.color.set(0xffffff); // Сбрасываем цвет в белый для текстур
                 resolve()
@@ -89,10 +89,10 @@ export function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | nu
             ctx.fillRect(0, 0, size, size)
         }
 
-        material.map = new THREE.CanvasTexture(canvas)
+        material.map = new CanvasTexture(canvas)
     }
 
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new Mesh(geometry, material);
 
     mesh.position.set(objData.position[0], objData.position[1], objData.position[2]);
     mesh.rotation.set(objData.rotation[0], objData.rotation[1], objData.rotation[2]);
@@ -107,7 +107,7 @@ export function createMeshFromData(objData: SceneObject): {mesh: THREE.Mesh | nu
 }
 
 export async function exportToGLB(objects: SceneObject[], scene_name: string = "scene") {
-    const tempScene = new THREE.Scene();
+    const tempScene = new Scene();
     const texturePromises: Promise<void>[] = [];
 
     for (const objData of objects) {
@@ -125,7 +125,7 @@ export async function exportToGLB(objects: SceneObject[], scene_name: string = "
         throw err;
     })
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    const directionalLight = new DirectionalLight(0xffffff, 0.8)
     directionalLight.position.set(10, 10, 10);
     directionalLight.castShadow = true;
     tempScene.add(directionalLight)
@@ -167,15 +167,15 @@ export async function exportToGLB(objects: SceneObject[], scene_name: string = "
     })
 }
 
-function disposeScene(scene: THREE.Scene) {
+function disposeScene(scene: Scene) {
     scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
+        if (obj instanceof Mesh) {
             obj.geometry.dispose()
             const mat = obj.material
-            if (mat instanceof THREE.MeshStandardMaterial) {
+            if (mat instanceof MeshStandardMaterial) {
                 if (mat.map) mat.map.dispose()
                 mat.dispose()
-            } else if (mat instanceof THREE.Material) {
+            } else if (mat instanceof Material) {
                 mat.dispose()
             }
         }

@@ -5,7 +5,7 @@ import { exportToRoblox } from "../utils/exportToRBXM";
 import { exportToGLB } from "../utils/exportToGLB";
 import { importFromGLB as importGLBUtils } from "../utils/importFromGLB";
 import { importFromOBJ as importOBJUtils } from "../utils/importFromOBJ";
-import * as THREE from 'three'
+import { Camera, Object3D } from 'three'
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import { saveScene } from "../lib/appwrite";
 import { useAuthStore } from "./authStore";
@@ -13,7 +13,7 @@ import { useAuthStore } from "./authStore";
 function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
     let timer: ReturnType<typeof setTimeout>;
     return ((...args: unknown[]) => {
-        clearInterval(timer);
+        clearTimeout(timer);
         timer = setTimeout(() => fn(...args), delay)
     }) as T;
 }
@@ -60,9 +60,9 @@ interface SceneStore extends SceneState {
     past: SceneState[],
     future: SceneState[],
     controls: OrbitControls | null,
-    camera: THREE.Camera | null,
+    camera: Camera | null,
     lastSaved: number | null,
-    rawMeshes: THREE.Object3D[],
+    rawMeshes: Object3D[],
     online: boolean,
     currentSceneId: string | null;
     
@@ -74,7 +74,7 @@ interface SceneStore extends SceneState {
     // applyRealTimeUpdate: (id: string, updates: Partial<SceneObject>) => void,
     // applyRealTimeDelete: (id: string) => void,
 
-    setCamera: (camera: THREE.Camera | null) => void,
+    setCamera: (camera: Camera | null) => void,
     setControls: (controls: OrbitControls | null) => void,   
     setObjectsFromRealtime: (newObjects: SceneObject[]) => void,
     

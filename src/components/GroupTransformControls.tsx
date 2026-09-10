@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react"
 import { TransformControls } from "@react-three/drei"
-import * as THREE from 'three'
-import type { SceneObject } from "../store/sceneStore"
+import { Group, Vector3, Euler } from 'three'
+import { useSceneStore, type SceneObject } from "../store/sceneStore"
 
 interface GroupTransformControlsProps {
     selectedIds: string[];
@@ -12,22 +12,15 @@ interface GroupTransformControlsProps {
     gridSize: number;
 }
 
-export function GroupTransformControls({ 
-    selectedIds, 
-    objects, 
-    updateObj, 
-    transformMode, 
-    snapEnabled,
-    gridSize,
-}: GroupTransformControlsProps) {
+export function GroupTransformControls({ selectedIds, objects, updateObj, transformMode, snapEnabled, gridSize}: GroupTransformControlsProps) {
     
-    const pivotRef = useRef<THREE.Group>(null);
-    const [pivot, setPivot] = useState<THREE.Group | null>(null);
+    const pivotRef = useRef<Group>(null);
+    const [pivot, setPivot] = useState<Group | null>(null);
     
     const initialPivotState = useRef({
-        position: new THREE.Vector3(),
-        rotation: new THREE.Euler(),
-        scale: new THREE.Vector3()
+        position: new Vector3(),
+        rotation: new Euler(),
+        scale: new Vector3()
     });
     
     const initialObjectPos = useRef<Map<string, [number, number, number]>>(new Map());
@@ -36,38 +29,40 @@ export function GroupTransformControls({
     
     const isDragging = useRef(false);
 
-    // 1. ✅ Вычисляем центр масс. Зависимость от objects необходима,
-    // чтобы центр масс обновлялся, если объекты были перемещены программно.
-    // Бесконечный цикл предотвращается проверкой !isDragging.current в useEffect.
+    // 1. ✅ Вычисляем центр масс с использованием Vector3
     const centerOfMass = useMemo(() => {
         const selectedObjects = objects.filter(obj => selectedIds.includes(obj.id));
-        if (selectedObjects.length === 0) return { x: 0, y: 0, z: 0 };
+        if (selectedObjects.length === 0) return new Vector3(0, 0, 0);
         
-        let sumX = 0, sumY = 0, sumZ = 0;
-        for (const obj of selectedObjects) {
-            sumX += obj.position[0];
-            sumY += obj.position[1];
-            sumZ += obj.position[2];
-        }
+        const sum = selectedObjects.reduce((acc, obj) => {
+            acc.x += obj.position[0];
+            acc.y += obj.position[1];
+            acc.z += obj.position[2];
+            return acc;
+        }, new Vector3(0, 0, 0));
+
         const count = selectedObjects.length;
-        return { x: sumX / count, y: sumY / count, z: sumZ / count };
-    }, [objects, selectedIds]);
+        return new Vector3(sum.x / count, sum.y / count, sum.z / count);
+    }, [selectedIds.join(','), objects]); 
 
     // 2. Синхронизируем пивот с центром масс ТОЛЬКО когда не тянем
     useEffect(() => {
         if (pivotRef.current && !isDragging.current) {
-            pivotRef.current.position.set(centerOfMass.x, centerOfMass.y, centerOfMass.z);
+            pivotRef.current.position.copy(centerOfMass);
             pivotRef.current.rotation.set(0, 0, 0);
             pivotRef.current.scale.set(1, 1, 1);
         }
-    }, [centerOfMass]);
+    }, [centerOfMass, selectedIds.join(',')]);
 
     // 3. Начало перетаскивания
     const handleStart = useCallback(() => {
         if (!pivotRef.current) return;
         
         isDragging.current = true;
+
+        const currentObjects = useSceneStore.getState().objects;
         
+        // ✅ Сохраняем начальное состояние пивота
         initialPivotState.current.position.copy(pivotRef.current.position);
         initialPivotState.current.rotation.copy(pivotRef.current.rotation);
         initialPivotState.current.scale.copy(pivotRef.current.scale);
@@ -77,14 +72,14 @@ export function GroupTransformControls({
         initialObjectScale.current.clear();
         
         selectedIds.forEach(id => {
-            const obj = objects.find(o => o.id === id);
+            const obj = currentObjects.find(o => o.id === id);
             if (obj) {
                 initialObjectPos.current.set(id, [...obj.position] as [number, number, number]);
                 initialObjectRotation.current.set(id, [...obj.rotation] as [number, number, number]);
                 initialObjectScale.current.set(id, [...obj.scale] as [number, number, number]);
             }
         });
-    }, [selectedIds, objects]);
+    }, [selectedIds.join(',')]);
 
     // 4. Окончание перетаскивания
     const handleEnd = useCallback(() => {
@@ -99,14 +94,14 @@ export function GroupTransformControls({
         const currentPivotRef = pivotRef.current;
         if (!currentPivotRef || !isDragging.current) return;
         
-        // Считаем дельты ОДИН раз за кадр, а не для каждого объекта
-        const deltaPos = new THREE.Vector3().subVectors(currentPivotRef.position, initialPivotState.current.position);
-        const deltaRot = new THREE.Vector3(
+        // Считаем дельты ОДИН раз за кадр
+        const deltaPos = new Vector3().subVectors(currentPivotRef.position, initialPivotState.current.position);
+        const deltaRot = new Vector3(
             currentPivotRef.rotation.x - initialPivotState.current.rotation.x,
             currentPivotRef.rotation.y - initialPivotState.current.rotation.y,
             currentPivotRef.rotation.z - initialPivotState.current.rotation.z
         );
-        const deltaScl = new THREE.Vector3(
+        const deltaScl = new Vector3(
             currentPivotRef.scale.x - initialPivotState.current.scale.x,
             currentPivotRef.scale.y - initialPivotState.current.scale.y,
             currentPivotRef.scale.z - initialPivotState.current.scale.z
@@ -122,6 +117,7 @@ export function GroupTransformControls({
             const initialScl = initialObjectScale.current.get(id);
 
             if (!initialPos || !initialRot || !initialScl) return;
+            
             const rawX = initialPos[0] + deltaPos.x;
             const rawY = initialPos[1] + deltaPos.y;
             const rawZ = initialPos[2] + deltaPos.z;
@@ -131,19 +127,28 @@ export function GroupTransformControls({
                     position: [
                         snapEnabled ? Math.round(rawX / gridSize) * gridSize : rawX,
                         snapEnabled ? Math.round(rawY / gridSize) * gridSize : rawY, 
-                        snapEnabled ? Math.round(rawZ / gridSize) * gridSize : rawZ]
+                        snapEnabled ? Math.round(rawZ / gridSize) * gridSize : rawZ
+                    ]
                 });
             } else if (transformMode === 'rotate') {
                 updateObj(id, {
-                    rotation: [initialRot[0] + deltaRot.x, initialRot[1] + deltaRot.y, initialRot[2] + deltaRot.z]
+                    rotation: [
+                        initialRot[0] + deltaRot.x, 
+                        initialRot[1] + deltaRot.y, 
+                        initialRot[2] + deltaRot.z
+                    ]
                 });
             } else if (transformMode === 'scale') {
                 updateObj(id, {
-                    scale: [initialScl[0] + deltaScl.x, initialScl[1] + deltaScl.y, initialScl[2] + deltaScl.z]
+                    scale: [
+                        initialScl[0] + deltaScl.x, 
+                        initialScl[1] + deltaScl.y, 
+                        initialScl[2] + deltaScl.z
+                    ]
                 });
             }
         });
-    }, [selectedIds, transformMode, snapEnabled, gridSize, updateObj]);
+    }, [selectedIds.join(','), transformMode, snapEnabled, gridSize, updateObj]);
 
     // 6. Глобальный обработчик отпускания мыши (страховка)
     useEffect(() => {
@@ -165,9 +170,8 @@ export function GroupTransformControls({
             <group 
                 ref={(node) => {
                     pivotRef.current = node;
-                    if (node) setPivot(node);
+                    if (node) setPivot(node); 
                 }}
-                position={[centerOfMass.x, centerOfMass.y, centerOfMass.z]}
             >
                 <mesh visible={false}> 
                     <boxGeometry args={[0.5, 0.5, 0.5]} />

@@ -1,8 +1,8 @@
 // src/utils/importFromGLB.ts
-import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore'
 import { generatedId } from './generatedId';
+import { Mesh, MeshStandardMaterial } from 'three'
 
 export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => void, onError: (error: string) => void) {
     const reader = new FileReader();
@@ -17,8 +17,8 @@ export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => 
                     const objects: SceneObject[] = [];
                     
                     gtlf.scene.traverse((child) => {
-                        if (child instanceof THREE.Mesh) {
-                            const mesh = child as THREE.Mesh;
+                        if (child instanceof Mesh) {
+                            const mesh = child as Mesh;
                             const obj = convertMeshToObject(mesh);
                             if (obj) {
                                 objects.push(obj);
@@ -48,7 +48,7 @@ export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => 
     reader.readAsArrayBuffer(file)
 }
 
-function convertMeshToObject(mesh: THREE.Mesh): SceneObject | null {
+function convertMeshToObject(mesh: Mesh): SceneObject | null {
     const geometry = mesh.geometry;
     let type: SceneObject['type'];
 
@@ -66,7 +66,7 @@ function convertMeshToObject(mesh: THREE.Mesh): SceneObject | null {
         default: type = 'box'; break;
     }
   
-    const material = mesh.material as THREE.MeshStandardMaterial;
+    const material = mesh.material as MeshStandardMaterial;
     let color = "#bf8ff3";
     let opacity = 1.0;
     let metalness = 0.0;

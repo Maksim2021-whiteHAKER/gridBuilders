@@ -1,12 +1,12 @@
 // src/utils/importFromOBJ.ts
-import * as THREE from 'three'
 import { OBJLoader } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore'
 import { generatedId } from './generatedId';
+import { Group, Mesh} from 'three'
 
 export function importFromOBJ(
     file: File, 
-    onImport: (objects: SceneObject[], rawGroup: THREE.Group) => void, // ✅ Добавили второй параметр
+    onImport: (objects: SceneObject[], rawGroup: Group) => void, // ✅ Добавили второй параметр
     onError: (error: string) => void
 ) {
     const reader = new FileReader();
@@ -20,8 +20,8 @@ export function importFromOBJ(
             const objects: SceneObject[] = [];
             
             group.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    const mesh = child as THREE.Mesh;
+                if (child instanceof Mesh) {
+                    const mesh = child as Mesh;
                     const obj: SceneObject = {
                         id: generatedId(),
                         type: 'box',

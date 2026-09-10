@@ -5,12 +5,12 @@ import { OrbitControls as OrbitControlsDrei, Grid, Line, TransformControls, Outl
 import { COLORS } from '../constants/color.ts'
 import { useSceneStore, type SceneObject } from '../store/sceneStore.ts'
 import { GroupTransformControls } from './GroupTransformControls.tsx'
-import * as THREE from 'three'
 import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { subscribeToSceneUpdates } from '../lib/realtime.ts'
+import { Mesh, TextureLoader, Texture, Vector2, Raycaster } from 'three'
 
 function CameraSaver() {
     const { camera } = useThree();
@@ -18,7 +18,7 @@ function CameraSaver() {
 
     useEffect(() => {
         setCamera(camera)
-    }, [camera, setCamera ])
+    }, [camera, setCamera])
 
     return null
 }
@@ -51,7 +51,9 @@ function getTextureUrl(obj: SceneObject): string | undefined {
 }
 
 function TexturedMaterial({obj, isSelected, textureUrl} : {obj: SceneObject, isSelected: boolean, textureUrl: string}){
-    const texture = useLoader(THREE.TextureLoader, textureUrl) as THREE.Texture;
+    // useLoader автоматически кэширует текстуры по URL. 
+    // Благодаря useMemo выше, URL стабилен, и кэш работает идеально.
+    const texture = useLoader(TextureLoader, textureUrl) as Texture;
     const finalColor = obj.useGradient ? "#ffffff" : obj.color;
 
     return (
@@ -86,15 +88,25 @@ function PlainMaterial({obj, isSelected}: {obj: SceneObject, isSelected: boolean
 }
 
 function ObjectMaterial({obj, isSelected } : {obj: SceneObject, isSelected:boolean}) {
-    const textureUrl = getTextureUrl(obj)
+    // Мемоизируем вычисление URL. Функция вызовется заново ТОЛЬКО если изменятся эти зависимости.
+    // Это предотвращает постоянную перегенерацию base64 строки при ререндерах сцены.
+    const textureUrl = useMemo(() => {
+        return getTextureUrl(obj);
+    }, [
+        obj.useGradient,
+        obj.gradientColors,
+        obj.gradientType,
+        obj.gradientAngle,
+        obj.textureUrl
+    ]);
 
     if (textureUrl) {
-        return <TexturedMaterial obj={obj} isSelected={isSelected} textureUrl={textureUrl} />
+        return <TexturedMaterial obj={obj} isSelected={isSelected} textureUrl={textureUrl} />;
     }
-    return <PlainMaterial obj={obj} isSelected={isSelected} />
+    return <PlainMaterial obj={obj} isSelected={isSelected} />;
 }
 
-function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:boolean, setMesh: (mesh: THREE.Mesh | null) => void}){
+function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:boolean, setMesh: (mesh: Mesh | null) => void}){
     if (obj.type === 'text') {
         return (
             <Text3D ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} 
@@ -111,7 +123,7 @@ function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:b
     }
 
     return(
-        <mesh key={`mesh-${obj.id}-${obj.useGradient ? 'grad' : 'solid'}`} ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
+        <mesh key={obj.id} ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
             onClick={(e) => {
             e.stopPropagation()
             const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
@@ -128,17 +140,17 @@ function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:b
             {obj.type === 'cone' && <coneGeometry args={[0.5, 1, 10, 32]} />}
             {obj.type === 'tor' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
             {obj.type === 'pyramid' && <coneGeometry args={[0.5, 1, 4, 1]} />}
-            <ObjectMaterial key={obj.textureUrl || "no-texture"} obj={obj} isSelected={isSelected} />
+            
+            <ObjectMaterial obj={obj} isSelected={isSelected} />
         </mesh>
     )
 }
 
 function SceneObject({obj, isSelected}:{obj: SceneObject, isSelected:boolean}){
-    const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
+    const [mesh, setMesh] = useState<Mesh | null>(null);
     const { updateObj, transformMode, selectedIds, snapEnabled, gridSize } = useSceneStore();
     const [isTransforming, setIsTransforming] = useState(false);
 
-    // Синхронизация стора с mesh
     useEffect(() => {
         if (mesh && !isTransforming ) {
             mesh.position.set(obj.position[0], obj.position[1], obj.position[2]);
@@ -175,43 +187,35 @@ function SceneObject({obj, isSelected}:{obj: SceneObject, isSelected:boolean}){
 
 function ClickOutsideHandle() {
     const { camera, scene, gl } = useThree();
-    // Убедись, что в твоем сторе эта функция называется clearSelection или deselectAll
     const clearSelection = useSceneStore((state) => state.clearSelection);
 
     useEffect(() => {
         const canvas = gl.domElement;
 
         const handleDoubleClick = (event: MouseEvent) => {
-            // Игнорируем двойной клик, если он был не по самому canvas (например, по UI поверх)
             if (event.target !== canvas) return;
 
-            const mouse = new THREE.Vector2(
+            const mouse = new Vector2(
                 (event.clientX / window.innerWidth) * 2 - 1,
                 -(event.clientY / window.innerHeight) * 2 + 1
             );
 
-            const raycaster = new THREE.Raycaster();
+            const raycaster = new Raycaster();
             raycaster.setFromCamera(mouse, camera);
 
-            // Ищем пересечения только с объектами сцены (игнорируем системные, как гизмо)
             const meshes = scene.children.filter(
-                (child): child is THREE.Mesh => {
-                    return child.type === 'Mesh' && !(child as THREE.Mesh).userData?.isSystemObject;
+                (child): child is Mesh => {
+                    return child.type === 'Mesh' && !(child as Mesh).userData?.isSystemObject;
                 }
             );
 
             const intersects = raycaster.intersectObjects(meshes, false);
 
-            // ✅ ГЛАВНОЕ УСЛОВИЕ: Если двойной клик попал в ПУСТОТУ -> снимаем выделение
             if (intersects.length === 0) {
                 clearSelection();
-            } else {
-                // Опционально: если двойной клик попал в объект, можно ничего не делать, 
-                // или в будущем добавить фокус камеры на этот объект.
             }
         };
 
-        // Слушаем именно двойной клик
         canvas.addEventListener('dblclick', handleDoubleClick);
 
         return () => {
@@ -225,40 +229,39 @@ function ClickOutsideHandle() {
 export function Scene_GB() {
     const allObjects = useSceneStore((state) => state.objects);
     const objects = useMemo(() => allObjects.filter(o => !o.deleted), [allObjects]);
+   
     const selectedIds = useSceneStore((state) => state.selectedIds);
-    
     const updateObj = useSceneStore((state) => state.updateObj);
     const transformMode = useSceneStore((state) => state.transformMode);
     const snapEnabled = useSceneStore((state) => state.snapEnabled);
     const gridSize = useSceneStore((state) => state.gridSize);
-    
     const selectObject = useSceneStore((state) => state.selectObject);
     const addToSelection = useSceneStore((state) => state.addToSelection);
     const clearSelection = useSceneStore((state) => state.clearSelection);
+    const lastSaved = useSceneStore((state) => state.lastSaved);
+    const isOnline = useSceneStore((state) => state.online);
+    const setOnline = useSceneStore((state) => state.setOnline);
+    const currentSceneId = useSceneStore((state) => state.currentSceneId);
 
-    const lastSaved = useSceneStore((state) => state.lastSaved)
-
-    const isOnline = useSceneStore((state) => state.online)
-    const setOnline = useSceneStore((state) => state.setOnline)
-    const currentSceneId = useSceneStore((state) => state.currentSceneId)
-
-    const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null)
+    const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+    const [prevSaved, setPrevSaved] = useState<number | null>(lastSaved);
 
-    const [prevSaved, setPrevSaved] = useState<number | null>(lastSaved)
     if (lastSaved !== prevSaved) {
-        setPrevSaved(lastSaved)
+        setPrevSaved(lastSaved);
         if (lastSaved) {
-            setShowSavedIndicator(true)
+            setShowSavedIndicator(true);
         }
     }
 
     useEffect(() => {
-        if (!isOnline || !currentSceneId) return 
+        if (!isOnline || !currentSceneId) return;
+        
         const unsubscribe = subscribeToSceneUpdates(currentSceneId, (update) => {
             const doc = update.document;
             const updateEvent = update.event;
-            if (!doc) return
+            if (!doc) return;
+            
             try {
                 const sceneData = typeof doc.scene_data === 'string' 
                     ? JSON.parse(doc.scene_data)
@@ -266,27 +269,29 @@ export function Scene_GB() {
                 const newObjects = Array.isArray(sceneData)
                     ? sceneData
                     : sceneData.objects || [];
-                        
+                    
                 if (updateEvent === 'create' || updateEvent === 'update') {
                     useSceneStore.getState().setObjectsFromRealtime(newObjects);
                 }
-                if (updateEvent === 'delete') useSceneStore.getState().setObjects([]);
-
-            } catch (err: unknown) {console.error('Ошибка чтения realtime-обновления: '+ err)}
+                if (updateEvent === 'delete') {
+                    useSceneStore.getState().setObjects([]);
+                }
+            } catch (err: unknown) {
+                console.error('Ошибка чтения realtime-обновления: '+ err);
+            }
         });
 
         return () => {
             unsubscribe();
             setOnline(false);
         };
-
-    }, [currentSceneId, isOnline, setOnline])
+    }, [currentSceneId, isOnline, setOnline]);
 
     useEffect(() => {
-        if (!showSavedIndicator) return
+        if (!showSavedIndicator) return;
         const timer = setTimeout(() => setShowSavedIndicator(false), 2500);
         return () => clearTimeout(timer);
-    }, [showSavedIndicator])
+    }, [showSavedIndicator]);
 
     const handleSelectionComplete = (newSelection: string[], isCtrl: boolean) => {
         if (newSelection.length > 0){
@@ -297,15 +302,15 @@ export function Scene_GB() {
                     addToSelection(newSelection[i]);
                 }
             } else {
-                 newSelection.forEach(id => addToSelection(id))
+                 newSelection.forEach(id => addToSelection(id));
             }
         } else if (!isCtrl) {
             clearSelection();
         }
-    }
+    };
 
     return (
-        <div style ={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
+        <div style={{width: '100%', height: '100%', background: COLORS.bg, overflow: 'hidden', position: 'relative'}}>
             {marquee && (
                 <div style={{
                     position: 'fixed',
@@ -337,27 +342,24 @@ export function Scene_GB() {
                     sectionSize={2.5} 
                     followCamera={false} 
                     infiniteGrid={false}/>
-                    {/* Красная ось X */}
-                    <Line points={[[-100, 0, 0], [100, 0, 0]]} color={COLORS.axisX} lineWidth={3} opacity={0.4} transparent/>
-                    {/* Зелёная ось Y */}
-                    <Line points={[[0, -100, 0], [0, 100, 0]]} color={COLORS.axisY} lineWidth={3} opacity={0.4} transparent/>
-                    {/* Синяя ось Z */}
-                    <Line points={[[0, 0, -100], [0, 0, 100]]} color={COLORS.axisZ} lineWidth={3} opacity={0.4} transparent/>
+                <Line points={[[-100, 0, 0], [100, 0, 0]]} color={COLORS.axisX} lineWidth={3} opacity={0.4} transparent/>
+                <Line points={[[0, -100, 0], [0, 100, 0]]} color={COLORS.axisY} lineWidth={3} opacity={0.4} transparent/>
+                <Line points={[[0, 0, -100], [0, 0, 100]]} color={COLORS.axisZ} lineWidth={3} opacity={0.4} transparent/>
 
-                    {objects.map((obj) => (
-                        <SceneObject key={obj.id} obj={obj} isSelected={selectedIds.includes(obj.id)}/>
-                    ))}
+                {objects.map((obj) => (
+                    <SceneObject key={obj.id} obj={obj} isSelected={selectedIds.includes(obj.id)}/>
+                ))}
 
-                    {selectedIds.length > 1 && (
-                        <GroupTransformControls 
-                            selectedIds={selectedIds} 
-                            objects={objects} 
-                            updateObj={updateObj} 
-                            transformMode={transformMode}
-                            snapEnabled={snapEnabled}
-                            gridSize={gridSize}
-                        />
-                    )}
+                {selectedIds.length > 1 && (
+                    <GroupTransformControls 
+                        selectedIds={selectedIds} 
+                        objects={objects} 
+                        updateObj={updateObj} 
+                        transformMode={transformMode}
+                        snapEnabled={snapEnabled}
+                        gridSize={gridSize}
+                    />
+                )}
                 <ClickOutsideHandle />    
                 <OrbitControlsDrei makeDefault/>
                 <KeyboardShortcuts />

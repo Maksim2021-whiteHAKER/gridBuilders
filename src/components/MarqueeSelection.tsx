@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import { useSceneStore } from "../store/sceneStore";
-import * as THREE from 'three'
+import { Vector3 } from 'three'
 
 export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
         onMarqueeChange: (rect: {start: {x: number, y: number}, end: {x: number, y: number}} | null) => void;
@@ -26,7 +26,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
         if (x2 - x1 >= 5 || y2 - y1 >= 5) {
             const newSelection: string[] = [];  
             objects.forEach((obj) => {
-                const vector = new THREE.Vector3(...obj.position);
+                const vector = new Vector3(...obj.position);
     
                 vector.project(camera);
                 const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
