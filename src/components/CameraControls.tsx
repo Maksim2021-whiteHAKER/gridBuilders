@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Euler, Vector3, Quaternion } from 'three';
+import { Euler } from 'three/src/math/Euler.js'
+import { Vector3 } from 'three/src/math/Vector3.js'
+import { Quaternion } from 'three/src/math/Quaternion.js';
 import { useSceneStore } from '../store/sceneStore';
 
 export function CameraControls() {

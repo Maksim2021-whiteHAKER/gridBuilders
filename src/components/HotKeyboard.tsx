@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useSceneStore } from "../store/sceneStore";
 import { useThree } from "@react-three/fiber";
-import { Vector3 } from 'three'
+import { Vector3 } from 'three/src/math/Vector3.js'
 import { useDeviceType } from "../hooks/useDeviceType";
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import { calculateCenter } from "../utils/calculateCenter";

@@ -1,11 +1,12 @@
 // /src/components/ToolBar.tsx
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useSceneStore } from "../store/sceneStore";
 import { useDeviceType } from '../hooks/useDeviceType';
 import { ExportImportModal } from './modals/ExportImportModal';
 import type { Models } from 'appwrite';
 import { generatedId } from '../utils/generatedId';
-import { SupportModal } from './modals/SupportModal';
+
+const SupportModal = lazy(() => import('./modals/SupportModal').then(module => ({default: module.SupportModal})))
 
 type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text';
 
@@ -449,7 +450,11 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     💖 ПОДДЕРЖАТЬ
                 </button>
             </div>
-            {showSupport && <SupportModal onClose={() => setShowSupport(false)}/>}
+            {showSupport && (
+                <Suspense fallback={<div className='loading-spinner'>Загрузка...</div>}>
+                    <SupportModal onClose={() => setShowSupport(false)}/>
+                </Suspense>
+            )}
         </div>
     )
 }

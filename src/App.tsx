@@ -4,14 +4,16 @@ import { PropertiesPanel } from './components/PropertiesPanel.tsx';
 import { Scene_GB } from './components/Scene.tsx';
 import { ToolBar } from './components/ToolBar.tsx';
 import { useDeviceType } from './hooks/useDeviceType.ts';
-import { MobileTutorial } from './components/tutorials/MobileTutorial.tsx';
 import { CameraControls } from './components/CameraControls.tsx';
 import { useAuthStore } from './store/authStore';
-import { AuthModal } from './components/modals/AuthModal.tsx';
-import { ProjectModal } from './components/modals/ProjectModal.tsx';
 import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
 import { getPublicScene, loadScene } from './lib/appwrite';
 import { useSceneStore } from './store/sceneStore';
+import { lazy, Suspense } from 'react';
+
+const AuthModal = lazy(() => import('./components/modals/AuthModal.tsx').then(module => ({default: module.AuthModal})))
+const ProjectModal = lazy(() => import('./components/modals/ProjectModal.tsx').then(module => ({default: module.ProjectModal})))
+const MobileTutorial = lazy(() => import('./components/tutorials/MobileTutorial.tsx').then(module => ({default: module.MobileTutorial})))
 
 // ✅ Хук для туториала — выносит setState из основного тела компонента
 function useTutorial(isSmall: boolean) {
@@ -122,16 +124,26 @@ function App() {
         <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
             {!isReadOnly && (
                 <>
-                    {showTutorial && <MobileTutorial onClose={closeTutorial} />}
-                    {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+                    {showTutorial && (
+                        <Suspense fallback={<div className="loading-spinner">Загрузка инструкции...</div>}>
+                            <MobileTutorial onClose={closeTutorial} />
+                        </Suspense>
+                    )}
+                    {showAuthModal && (
+                        <Suspense fallback={<div className="loading-spinner">Загрузка...</div>}>
+                            <AuthModal onClose={() => setShowAuthModal(false)} />
+                        </Suspense>
+                    )}
                     {showProjectModal && (
-                        <ProjectModal
-                            onClose={() => setShowProjectModal(false)}
-                            onOpenCollab={(sceneId) => {
-                                openCollabScene(sceneId);
-                                setShowProjectModal(false);
-                            }}
-                        />
+                        <Suspense fallback={<div className="loading-spinner">Загрузка проектов...</div>}>
+                            <ProjectModal
+                                onClose={() => setShowProjectModal(false)}
+                                onOpenCollab={(sceneId) => {
+                                    openCollabScene(sceneId);
+                                    setShowProjectModal(false);
+                                }}
+                            />
+                        </Suspense>
                     )}
                     {isSmall && <FullscreenOrientation />}
                 </>

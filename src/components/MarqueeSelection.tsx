@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import { useSceneStore } from "../store/sceneStore";
-import { Vector3 } from 'three'
+import { Vector3 } from 'three/src/math/Vector3.js'
 
 export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
         onMarqueeChange: (rect: {start: {x: number, y: number}, end: {x: number, y: number}} | null) => void;

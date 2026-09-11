@@ -2,7 +2,8 @@
 import { GLTFLoader } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore'
 import { generatedId } from './generatedId';
-import { Mesh, MeshStandardMaterial } from 'three'
+import { Mesh } from 'three/src/objects/Mesh.js'
+import { MeshStandardMaterial } from 'three';
 
 export function importFromGLB(file: File, onImport: (objects: SceneObject[]) => void, onError: (error: string) => void) {
     const reader = new FileReader();

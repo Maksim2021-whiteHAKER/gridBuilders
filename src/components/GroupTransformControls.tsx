@@ -1,6 +1,8 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react"
 import { TransformControls } from "@react-three/drei"
-import { Group, Vector3, Euler } from 'three'
+import { Euler } from 'three/src/math/Euler.js'
+import { Vector3 } from 'three/src/math/Vector3.js'
+import { Group } from 'three/src/objects/Group.js';
 import { useSceneStore, type SceneObject } from "../store/sceneStore"
 
 interface GroupTransformControlsProps {

@@ -2,7 +2,8 @@
 import { OBJLoader } from 'three/examples/jsm/Addons.js'
 import type { SceneObject } from '../store/sceneStore'
 import { generatedId } from './generatedId';
-import { Group, Mesh} from 'three'
+import { Group } from 'three/src/objects/Group.js';
+import { Mesh} from 'three/src/objects/Mesh.js'
 
 export function importFromOBJ(
     file: File, 

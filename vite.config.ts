@@ -10,7 +10,20 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [
       react(),
-      isAnalyze ? visualizer({ template: 'treemap', open: true, gzipSize: true, brotliSize: true, filename: 'bundle-report.html' }) : null
-    ],
+      isAnalyze ? visualizer({ template: 'treemap', open: true, gzipSize: true, brotliSize: true, filename: 'bundle-report.html' 
+      }) : null
+    ].filter(Boolean),
+    build: {
+      chunkSizeWarningLimit: 1000, 
+      rollUpOptions: {
+        output: {
+          manualChunks: {
+            'render-vendor': ['react', 'react-dom'],
+            'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+            'appwrite-vendor': ['appwrite']
+          }
+        }
+      }
+    }
   }
 })
