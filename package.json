@@ -1,7 +1,7 @@
 {
   "name": "gridbuilders",
   "private": true,
-  "version": "0.2.7",
+  "version": "0.2.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.185.0",
     "@vitejs/plugin-react": "^6.0.2",
+    "esbuild": "^0.28.2",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
