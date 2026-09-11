@@ -15,6 +15,8 @@ interface GroupTransformControlsProps {
 }
 
 export function GroupTransformControls({ selectedIds, objects, updateObj, transformMode, snapEnabled, gridSize}: GroupTransformControlsProps) {
+
+    const selectedIdsStr = useMemo(() => selectedIds.join(','), [selectedIds]);
     
     const pivotRef = useRef<Group>(null);
     const [pivot, setPivot] = useState<Group | null>(null);
@@ -81,7 +83,7 @@ export function GroupTransformControls({ selectedIds, objects, updateObj, transf
                 initialObjectScale.current.set(id, [...obj.scale] as [number, number, number]);
             }
         });
-    }, [selectedIds.join(',')]);
+    }, [selectedIdsStr]);
 
     // 4. Окончание перетаскивания
     const handleEnd = useCallback(() => {
@@ -150,7 +152,7 @@ export function GroupTransformControls({ selectedIds, objects, updateObj, transf
                 });
             }
         });
-    }, [selectedIds.join(','), transformMode, snapEnabled, gridSize, updateObj]);
+    }, [selectedIdsStr, transformMode, snapEnabled, gridSize, updateObj]);
 
     // 6. Глобальный обработчик отпускания мыши (страховка)
     useEffect(() => {

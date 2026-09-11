@@ -16,6 +16,8 @@ import { Texture } from 'three/src/textures/Texture.js';
 import { TextureLoader } from 'three/src/loaders/TextureLoader.js'
 import { Raycaster } from 'three/src/core/Raycaster.js'
 
+type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>
+
 function CameraSaver() {
     const { camera } = useThree();
     const setCamera = useSceneStore((state) => state.setCamera)
@@ -40,7 +42,7 @@ function ControlsSaver() {
     return null
 }
 
-function getTextureUrl(obj: SceneObject): string | undefined {
+function getTextureUrl(obj: TextureUrlParams): string | undefined {
     if (obj.useGradient && obj.gradientColors && obj.gradientColors.length >= 2) {
         return createGradientTexture({
             colors: obj.gradientColors,
@@ -55,7 +57,6 @@ function getTextureUrl(obj: SceneObject): string | undefined {
 }
 
 function TexturedMaterial({obj, isSelected, textureUrl} : {obj: SceneObject, isSelected: boolean, textureUrl: string}){
-    // useLoader автоматически кэширует текстуры по URL. 
     // Благодаря useMemo выше, URL стабилен, и кэш работает идеально.
     const texture = useLoader(TextureLoader, textureUrl) as Texture;
     const finalColor = obj.useGradient ? "#ffffff" : obj.color;
@@ -95,13 +96,19 @@ function ObjectMaterial({obj, isSelected } : {obj: SceneObject, isSelected:boole
     // Мемоизируем вычисление URL. Функция вызовется заново ТОЛЬКО если изменятся эти зависимости.
     // Это предотвращает постоянную перегенерацию base64 строки при ререндерах сцены.
     const textureUrl = useMemo(() => {
-        return getTextureUrl(obj);
+        return getTextureUrl({
+            useGradient: obj.useGradient,
+            gradientColors: obj.gradientColors,
+            gradientType: obj.gradientType,
+            gradientAngle: obj.gradientAngle,
+            textureUrl: obj.textureUrl
+        });
     }, [
         obj.useGradient,
         obj.gradientColors,
         obj.gradientType,
         obj.gradientAngle,
-        obj.textureUrl
+        obj.textureUrl, 
     ]);
 
     if (textureUrl) {

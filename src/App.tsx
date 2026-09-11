@@ -24,7 +24,7 @@ function useTutorial(isSmall: boolean) {
         if (!isSmall) return;
         const hasSeenTutorial = localStorage.getItem(localSt);
         if (!hasSeenTutorial) {
-            setShowTutorial(true);
+            requestAnimationFrame(() => setShowTutorial(true));
         }
     }, [isSmall, localSt]);
 
@@ -42,11 +42,11 @@ function usePublicScene() {
     const [publicSceneName, setPublicSceneName] = useState('');
     const { setObjects } = useSceneStore();
 
+    const params = new URLSearchParams(window.location.search);
+    const viewId = params.get('view');
+    
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const viewId = params.get('view');
-
-        if (viewId) {
+        if (!viewId) return;
             setIsReadOnly(true);
             getPublicScene(viewId)
                 .then((scene) => {
@@ -60,9 +60,8 @@ function usePublicScene() {
                     window.history.replaceState({}, '', window.location.origin);
                     setIsReadOnly(false);
                 });
-        }
-    }, [setObjects]);
-
+    }, [viewId, setObjects]);
+    
     return { isReadOnly, publicSceneName };
 }
 
