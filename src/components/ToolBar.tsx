@@ -5,6 +5,7 @@ import { useDeviceType } from '../hooks/useDeviceType';
 import { ExportImportModal } from './modals/ExportImportModal';
 import type { Models } from 'appwrite';
 import { generatedId } from '../utils/generatedId';
+import { APPWRITE_READY } from '../lib/appwrite';
 
 const SupportModal = lazy(() => import('./modals/SupportModal').then(module => ({default: module.SupportModal})))
 
@@ -37,7 +38,7 @@ function handleImportType(acceptImport: string, importType: ImportType ) {
                 if (!success) alert("Сцена не загружена, проверьте формат, он должен быть JSON");
             };
             reader.readAsText(file);
-        } else if (acceptImport === '.glb,.gltf' || acceptImport === 'obj') { 
+        } else if (acceptImport === '.glb,.gltf' || acceptImport === '.obj') { 
             (importType as (file: File, callback: (success: boolean) => void) => void) (
                 file, (success) => {
                     if (success) console.log("Формат glb успешно импортирован"); 
@@ -221,7 +222,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     style={{
                         position: 'fixed', bottom: 85, right: 70, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
                         border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
-                        zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1001, display: APPWRITE_READY ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                     }}> {isExpandedAutorized ? "✕" : "⚙👤"}
                 </button>
@@ -229,7 +230,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     <div style={{
                         position: 'fixed', bottom: 85, right: 122, width: 200, background: 'rgba(20, 21, 31, 0.98)',
                         border: '1px solid #2e303a', borderRadius: 12, padding: 1,
-                        zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8,
+                        zIndex: 1000, display: APPWRITE_READY ? 'flex' : 'none', flexDirection: 'column', gap: 8,
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                     }}>
                         <AuthBlock user={user} onAuthClick={onAuthClick} onSignOut={onSignOut} isSmall={true} />
@@ -440,7 +441,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         color: user ? "white" : "#9ca3af",
                         border: user ? "1px solid #2e303a" : "1px dashed #aa3bff",
                         borderRadius: 8, cursor: "pointer", fontSize: 12,
-                        display: "flex", alignItems: "center", justifyContent: "center",
+                        display: APPWRITE_READY ? 'flex' : 'none', alignItems: "center", justifyContent: "center",
                         gap: 6, marginTop: "5px"
                     }}>
                     {user ? "📁 Мои проекты" : "🔐 Войти для доступа к облаку"}
@@ -460,6 +461,13 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
 }
 
 function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => void, user: Models.User<Models.Preferences> | null, onSignOut: () => void, isSmall: boolean}) {
+    if (!APPWRITE_READY) {
+        return (
+            <div style={{ marginTop: isSmall ? 8 : 12, paddingTop: isSmall ? 8 : 12, borderTop: '1px solid #2e303a' }}>
+                <p style={{ color: '#9ca3af', fontSize: isSmall ? 11 : 12 }}>☁️ offline</p>
+            </div>
+        );
+    }
     return (
     <div style={{ marginTop: isSmall ? 8 : 12, paddingTop: isSmall ? 8 : 12, borderTop: '1px solid #2e303a' }}>
         {user ? (

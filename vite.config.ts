@@ -6,6 +6,7 @@ import legacy from '@vitejs/plugin-legacy'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const isAnalyze = mode === 'analyze';
+  const isTunnel = mode === 'tunnel';
 
   return {
     plugins: [react(), 
@@ -22,11 +23,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       allowedHosts: true,
-
-      hmr: {
-        clientPort: 443,
-        protocol: 'wss'
-      },
+      hmr: isTunnel ? { clientPort: 443, protocol: 'wss' } : true,
       cors: true
     },
     

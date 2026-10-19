@@ -1,7 +1,7 @@
 // src/store/authStore.ts
 import { create } from "zustand";
 import type { Models } from "appwrite";
-import { account} from "../lib/appwrite"
+import { account, APPWRITE_READY} from "../lib/appwrite"
 
 interface AuthState {
     user: Models.User<Models.Preferences> | null;
@@ -17,6 +17,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     isLoading: true,
 
     checkUser: async () => {
+        if (!APPWRITE_READY) {
+            set({ user: null, isLoading: false });  // офлайн: сразу показываем UI
+            return;
+        }
         try {
             const user = await account.get()
             set({user, isLoading: false })
@@ -44,7 +48,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
 }))
-
-
-
-

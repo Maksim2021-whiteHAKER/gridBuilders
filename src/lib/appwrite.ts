@@ -4,9 +4,16 @@ import { Client, Account, Databases, Query, Permission, Role } from "appwrite";
 export const DATA_BASE = import.meta.env.VITE_APPWRITE_DATA_BASE_ID
 export const COLLECTION = import.meta.env.VITE_APPWRITE_COLLECTION_ID
 
+export const APPWRITE_READY = Boolean(
+    import.meta.env.VITE_APPWRITE_ENDPOINT &&
+    import.meta.env.VITE_APPWRITE_PROJECT_ID &&
+    import.meta.env.VITE_APPWRITE_DATA_BASE_ID &&
+    import.meta.env.VITE_APPWRITE_COLLECTION_ID
+)
+
 const client = new Client()
-    .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT)
-    .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+    .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
+    .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || 'offline-local');
 
 export const account = new Account(client);
 export const databases = new Databases(client)
