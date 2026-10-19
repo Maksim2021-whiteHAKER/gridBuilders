@@ -30,7 +30,6 @@ export function SupportModal({ onClose }: { onClose: () => void }) {
                     <SupportLink href="https://boosty.to/ghostwarriorxz/donate" emoji="💰" title="Boosty" desc="Разовая или ежемесячная поддержка" />
                     <SupportLink href="https://www.donationalerts.com/r/ghostwarriorxz" emoji="💎" title="DonationAlerts" desc="Разовая поддержка" />
                     <SupportLink href="https://yoomoney.ru/to/410015336126322" emoji="💳" title="YooMoney" desc="Прямой перевод" />
-                    <SupportLink href="" emoji="🌐💳❌ пока в работе" title="WebMoney" desc="электронный кошелёк" />
                     <SupportLink href="https://github.com/Maksim2021-whiteHAKER/gridBuilders/issues" emoji="🐛" title="Issues на GitHub" desc="Сообщить об ошибках или предложить идеи" />
                 </div>
 

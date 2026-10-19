@@ -15,6 +15,7 @@ import { Vector2 } from 'three/src/math/Vector2.js'
 import { Texture } from 'three/src/textures/Texture.js';
 import { TextureLoader } from 'three/src/loaders/TextureLoader.js'
 import { Raycaster } from 'three/src/core/Raycaster.js'
+import { useIsDesktop } from '../hooks/useDeviceType.ts'
 
 type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>
 
@@ -71,7 +72,7 @@ function TexturedMaterial({obj, isSelected, textureUrl} : {obj: SceneObject, isS
                 depthWrite={obj.opacity === 1}
                 alphaTest={obj.opacity < 1 ? 0.01 : 0}
             />
-            {isSelected && <Outlines color="#aa3bff" thickness={2} angle={0.6} />}
+            { isSelected && <Outlines color="#aa3bff" thickness={2} angle={0.6} />}
         </>
     )
 }
@@ -258,6 +259,10 @@ export function Scene_GB() {
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
     const [prevSaved, setPrevSaved] = useState<number | null>(lastSaved);
 
+    const isDesktop = useIsDesktop(); // Вызываем хук в начале компонента
+    const DPR = isDesktop ? 2 : 1.5;
+    const antialiasing = isDesktop;
+
     if (lastSaved !== prevSaved) {
         setPrevSaved(lastSaved);
         if (lastSaved) {
@@ -335,7 +340,7 @@ export function Scene_GB() {
                     zIndex: 9999
                 }} />
             )}
-            <Canvas shadows dpr={[1, 2]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: true, alpha: false, preserveDrawingBuffer: true}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}>                  
+            <Canvas dpr={[1, DPR]} camera={{position: [25, 25, 25], fov: 60 }} gl={{antialias: antialiasing, alpha: false, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false, powerPreference: 'high-performance'}} style={{width: '100%', height: '100%'}} onPointerMissed={e => e.stopPropagation()}>                  
                 <CameraSaver />
                 <ControlsSaver />
                 <color attach='background' args={[COLORS.bg]}/>
@@ -343,8 +348,8 @@ export function Scene_GB() {
                 <directionalLight 
                     position={[50, 100, 50]} 
                     intensity={0.8} 
-                    castShadow 
-                    shadow-mapSize={2048} 
+                    // castShadow 
+                    // shadow-mapSize={2048} 
                     shadow-camera-left={-100} shadow-camera-right={100} shadow-camera-top={100} shadow-camera-bottom={-100}/>
                 <Grid args={[500, 500]} 
                     cellColor={COLORS.gridMinor} 
@@ -372,7 +377,7 @@ export function Scene_GB() {
                     />
                 )}
                 <ClickOutsideHandle />    
-                <OrbitControlsDrei makeDefault/>
+                <OrbitControlsDrei makeDefault enableDamping={false}/>
                 <KeyboardShortcuts />
                 <MarqueeSelection onMarqueeChange={setMarquee} onSelectionComplete={handleSelectionComplete} />
                 <CameraFocusAuto />

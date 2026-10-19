@@ -9,6 +9,7 @@ import { Camera, Object3D } from 'three'
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import { saveScene } from "../lib/appwrite";
 import { useAuthStore } from "./authStore";
+import { subscribeToSceneUpdates } from "../lib/realtime";
 
 function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
     let timer: ReturnType<typeof setTimeout>;
@@ -111,6 +112,11 @@ interface SceneStore extends SceneState {
     redo: () => void,
     canUndo: () => boolean,
     canRedo: () => boolean
+
+    // совместка
+    startCollab: (sceneId: string) => void;
+    stopCollab: () => void;
+
 }
 
 const loadInitialState = (): Partial<SceneState> => {
@@ -157,6 +163,8 @@ function makePushToCloud(get: () => SceneStore) {
         })
     }, 1000)
 }
+
+let unsubscribeRealtime: (() => void) | null = null;
 
 export const useSceneStore = create<SceneStore>((set, get) => {
 
@@ -549,6 +557,39 @@ export const useSceneStore = create<SceneStore>((set, get) => {
 
         canUndo: () => get().past.length > 0,
         canRedo: () => get().future.length > 0,
+
+        startCollab: (sceneId: string) => {
+            // Включаем онлайн-режим
+            set({ online: true, currentSceneId: sceneId });
+
+            // Отписываемся от старых подписок, если были
+            if (unsubscribeRealtime) unsubscribeRealtime();
+
+            // Подписываемся на обновления из Appwrite
+            unsubscribeRealtime = subscribeToSceneUpdates(sceneId, (update) => {
+                // Нас интересуют только обновления (update)
+                if (update.event === 'update' && update.document) {
+                    try {
+                        const parsedData = JSON.parse(update.document.scene_data);
+                        const remoteObjects = parsedData.objects || parsedData;
+                        
+                        // Обновляем локальный стейт данными от друга
+                        get().setObjectsFromRealtime(remoteObjects);
+                        console.log("Получены данные от напарника!");
+                    } catch (e) {
+                        console.error("Ошибка парсинга данных из Realtime:", e);
+                    }
+                }
+            });
+        },
+
+        stopCollab: () => {
+            set({ online: false, currentSceneId: null });
+            if (unsubscribeRealtime) {
+                unsubscribeRealtime();
+                unsubscribeRealtime = null;
+            }
+        },
 
         // online
         // applyRealTimeCreate: (obj: SceneObject) => {

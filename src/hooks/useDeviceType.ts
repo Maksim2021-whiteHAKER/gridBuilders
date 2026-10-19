@@ -1,4 +1,4 @@
-// scr/hooks/useIsMobile.ts
+// scr/hooks/useDeviceType.ts
 import {useState, useEffect} from 'react'
 
 export type DeviceType = 'mobile' | 'tablet' | 'desktop';

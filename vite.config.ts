@@ -1,14 +1,15 @@
 import { defineConfig } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
 import react from '@vitejs/plugin-react'
+import legacy from '@vitejs/plugin-legacy'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const isAnalyze = mode === 'analyze';
 
   return {
-    plugins: [
-      react(),
+    plugins: [react(), 
+      legacy({targets: ['defaults', 'not IE 11']}),
       isAnalyze ? visualizer({ 
         template: 'treemap', 
         open: true, 
@@ -18,8 +19,19 @@ export default defineConfig(({ mode }) => {
       }) : null
     ].filter(Boolean),
     
+    server: {
+      host: true,
+      allowedHosts: true,
+
+      hmr: {
+        clientPort: 443,
+        protocol: 'wss'
+      },
+      cors: true
+    },
+    
     build: {
-      target: 'esnext',
+      target: 'es2015',
       minify: 'esbuild',
       chunkSizeWarningLimit: 1500, // Немного увеличим лимит, так как 3D тяжелый по природе
       rollupOptions: { // Исправлено: было rollUpOptions
