@@ -10,11 +10,7 @@ import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { subscribeToSceneUpdates } from '../lib/realtime.ts'
-import { Mesh } from 'three/src/objects/Mesh.js'
-import { Vector2 } from 'three/src/math/Vector2.js'
-import { Texture } from 'three/src/textures/Texture.js';
-import { TextureLoader } from 'three/src/loaders/TextureLoader.js'
-import { Raycaster } from 'three/src/core/Raycaster.js'
+import { Mesh, Vector2, Texture, TextureLoader, Raycaster } from 'three'
 import { useIsDesktop } from '../hooks/useDeviceType.ts'
 
 type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>

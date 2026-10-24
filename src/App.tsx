@@ -10,6 +10,8 @@ import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
 import { getPublicScene, loadScene } from './lib/appwrite';
 import { useSceneStore } from './store/sceneStore';
 import { lazy, Suspense } from 'react';
+import { WebGLGuard } from './components/WebGLGuard.tsx';
+import { SceneErrorBoundary } from './components/SceneErrorBoundary.tsx';
 
 const AuthModal = lazy(() => import('./components/modals/AuthModal.tsx').then(module => ({default: module.AuthModal})))
 const ProjectModal = lazy(() => import('./components/modals/ProjectModal.tsx').then(module => ({default: module.ProjectModal})))
@@ -107,6 +109,10 @@ function App() {
         checkUser();
     }, [checkUser]);
 
+    useEffect(() => {
+        document.getElementById('boot-loader')?.remove()
+    }, []);
+
     if (isLoading && !isReadOnly) {
         return (
             <div style={{
@@ -148,7 +154,11 @@ function App() {
                 </>
             )}
 
-            <Scene_GB />
+            <SceneErrorBoundary>
+                <WebGLGuard>
+                    <Scene_GB />
+                </WebGLGuard>
+            </SceneErrorBoundary>
 
             {!isReadOnly && currentSceneId && (
                 <div
