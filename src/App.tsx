@@ -70,8 +70,10 @@ function usePublicScene() {
 
 function useRoomScene() {
     const { setObjects } = useSceneStore();
-    const params = new URLSearchParams(window.location.search);
-    const roomId = params.get('room') || params.get('komnataEdit');
+    const [roomId] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('room') || params.get('komnataEdit');        
+    });
 
     useEffect(() => {
         if (!roomId) return;
