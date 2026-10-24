@@ -7,7 +7,7 @@ import { useDeviceType } from './hooks/useDeviceType.ts';
 import { CameraControls } from './components/CameraControls.tsx';
 import { useAuthStore } from './store/authStore';
 import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
-import { getPublicScene, loadScene } from './lib/appwrite';
+import { getPublicScene, loadScene, makeRoomShared } from './lib/appwrite';
 import { useSceneStore } from './store/sceneStore';
 import { lazy, Suspense } from 'react';
 import { WebGLGuard } from './components/WebGLGuard.tsx';
@@ -46,25 +46,52 @@ function usePublicScene() {
 
     const params = new URLSearchParams(window.location.search);
     const viewId = params.get('view');
+    const roomId = params.get('room') || params.get('komnataEdit');
     
     useEffect(() => {
-        if (!viewId) return;
+        if (!viewId || roomId) return;
             setIsReadOnly(true);
             getPublicScene(viewId)
                 .then((scene) => {
-                    setObjects(scene.data.objects || []);
+                    setObjects(scene.data);
                     setPublicSceneName(scene.name);
                     console.log(`Загружена публичная сцена: ${scene.name}`);
                 })
                 .catch((err) => {
                     console.error(err);
                     alert("❌ Ошибка: Сцена не найдена или не является публичной.\n\n" + err.message);
-                    window.history.replaceState({}, '', window.location.origin);
+                    window.history.replaceState({}, '', window.location.pathname);
                     setIsReadOnly(false);
                 });
-    }, [viewId, setObjects]);
+    }, [viewId, roomId, setObjects]);
     
     return { isReadOnly, publicSceneName };
+}
+
+function useRoomScene() {
+    const { setObjects } = useSceneStore();
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('room') || params.get('komnataEdit');
+
+    useEffect(() => {
+        if (!roomId) return;
+        let cancelled = false;
+        getPublicScene(roomId)
+            .then((scene) => {
+                if (cancelled) return
+                setObjects(scene.data);
+                useSceneStore.getState().startCollab(roomId);
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return
+                console.error(err);
+                alert('❌ Комната недоступна: ' + (err as Error).message);
+                window.history.replaceState({}, '', window.location.pathname);
+            });
+        return () => { cancelled = true}
+    }, [roomId, setObjects])
+
+    return { roomId }
 }
 
 function App() {
@@ -77,6 +104,7 @@ function App() {
         deviceType === 'tablet' || deviceType === 'mobile'
     );
     const { isReadOnly, publicSceneName } = usePublicScene();
+    useRoomScene();
 
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showProjectModal, setShowProjectModal] = useState(false);
@@ -88,17 +116,17 @@ function App() {
         try {
             const scene = await loadScene(sceneId);
             setObjects(scene.data);
-            useSceneStore.getState().setCurrentSceneId(sceneId);
-            useSceneStore.getState().setOnline(true);
+            useSceneStore.getState().startCollab(sceneId);
+            window.history.replaceState({}, '', '?room=' + sceneId)
         } catch (error: unknown) {
             console.error("Ошибка загрузки сцены: " + error);
         }
     };
 
     const closeCollabScene = () => {
-        useSceneStore.getState().setCurrentSceneId(null);
-        useSceneStore.getState().setOnline(false);
+        useSceneStore.getState().stopCollab();
         setObjects([]);
+        window.history.replaceState({}, '', window.location.pathname);
     };
 
     // ✅ Эффект авторизации — checkUser теперь в зависимостях
@@ -161,22 +189,19 @@ function App() {
             </SceneErrorBoundary>
 
             {!isReadOnly && currentSceneId && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        bottom: 20, left: "50%",
-                        transform: 'translateX(-50%)',
-                        background: "rgba(72, 255, 115, 0.9)",
-                        color: "#0a0b15", padding: "8px 16px",
-                        borderRadius: 20,
-                        fontSize: 13, fontWeight: 600,
-                        zIndex: 1500,
-                        display: 'flex', alignItems: 'center', gap: 12,
-                    }}>
-                    Совместный режим 🟢
-                    <button className="closeBtn" onClick={closeCollabScene}>
-                        ✕ Закрыть
-                    </button>
+                <div className="collab-indicator">
+                    <span className="ci-text">Совместный режим <span className='ci-icon'>🟢</span></span>
+                    <button className="collab-indi-link" onClick={() => {
+                        const owner = useAuthStore.getState().user;
+                        if (!owner) { alert('Сначала войди в аккаунт'); return; }
+                        makeRoomShared(currentSceneId, owner.$id)
+                            .then(() => navigator.clipboard.writeText(
+                                `${window.location.origin}${window.location.pathname}?room=${currentSceneId}`
+                            ))
+                            .then(() => alert('🔗 Ссылка-комната скопирована! Отправь её напарнику.'))
+                            .catch((e: unknown) => alert('Ошибка: ' + (e as Error).message));
+                    }}>🔗 Ссылка-комната</button>
+                    <button className="collab-indi-close" onClick={closeCollabScene}>✕ Закрыть</button>
                 </div>
             )}
 

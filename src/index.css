@@ -184,6 +184,80 @@ button:focus-visible {
   transform: scale(0.9);
 }
 
+.collab-indicator {
+  display: flex;
+  position: fixed;
+  bottom: 20px; 
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(72, 255, 115, 0.9);
+  color: #0a0b15;
+  padding: 8px 16px;
+  border-radius: 35px;
+  font-size: 13px; 
+  font-weight: 600;
+  z-index: 1500;
+  align-items: center;
+  gap: 12px;
+}
+
+.collab-indi-close {
+  background: #ff0599;
+  width: 95px;
+  height: 25px;
+  border-radius: 40px;
+  font-size: 15px;
+  color: rgb(0, 0, 0);
+  font-weight: bold;
+  padding: 2px;
+}
+
+.collab-indi-link {
+  background: #0077ff;
+  width: 160px;
+  border-radius: 60px;
+  height: 25px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: bold;
+  padding: 2px;
+}
+
+.ci-text {
+  background: #fff;
+  width: 153px;
+  height: 25px;
+  padding: 2px;
+  border-radius: 45px;
+  align-items: center;
+  justify-items: center;
+}
+
+.ci-icon {
+  animation: animateStatus 0.7s infinite ease;
+  will-change: transform, opacity;
+}
+
+@keyframes animateStatus {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  20% {
+    opacity: 0.3;
+    transform: translateX(-50%) translateY(0);
+  }
+  80% {
+    opacity: 0.7;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
   20% { opacity: 1; transform: translateX(-50%) translateY(0); }

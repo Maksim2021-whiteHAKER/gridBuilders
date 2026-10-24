@@ -174,4 +174,25 @@ export async function getPublicScene(documentId: string) {
     }
 }
 
+export async function makeRoomShared(documentId: string, ownerId: string) {
+    const permissions = [
+        Permission.read(Role.user(ownerId)),
+        Permission.update(Role.user(ownerId)),
+        Permission.delete(Role.user(ownerId)),
+        Permission.read(Role.any()),
+        Permission.update(Role.any()),
+    ];
+    return await databases.updateDocument(
+        DATA_BASE, COLLECTION, documentId,
+        { is_public: true},
+        permissions
+    );
+}
+
+export async function updateSceneData(documentId: string, data: Record<string, unknown>) {
+    return databases.updateDocument(DATA_BASE, COLLECTION, documentId, {
+      scene_data: JSON.stringify(data),
+    });
+}
+
 export { client }

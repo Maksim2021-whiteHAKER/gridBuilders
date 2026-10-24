@@ -7,9 +7,12 @@ import { importFromGLB as importGLBUtils } from "../utils/importFromGLB";
 import { importFromOBJ as importOBJUtils } from "../utils/importFromOBJ";
 import { Camera, Object3D } from 'three'
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
-import { saveScene } from "../lib/appwrite";
+import { updateSceneData } from "../lib/appwrite";
 import { useAuthStore } from "./authStore";
 import { subscribeToSceneUpdates } from "../lib/realtime";
+import { generatedId } from "../utils/generatedId";
+
+const mySessionId = generatedId()
 
 function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
     let timer: ReturnType<typeof setTimeout>;
@@ -158,7 +161,7 @@ function makePushToCloud(get: () => SceneStore) {
         const user = useAuthStore.getState().user;
         if (!user) return;
         const visibleObjects = state.objects.filter(o => !o.deleted);
-        saveScene(user.$id, 'collab-scene', {objects: visibleObjects}, state.currentSceneId)
+        updateSceneData(state.currentSceneId, {objects: visibleObjects, savedBy: mySessionId})
             .catch((err: unknown) => {console.error("Сохранение в облако провалено: " + err)
         })
     }, 1000)
@@ -475,7 +478,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                     snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
                     gridSize: parsed.gridSize || 1.0,            
                 })
-                get().saveToLocalStorage();
+                if (get().online) pushToCloud() 
+                    else get().saveToLocalStorage();
                 return true;
             } catch (e) {
                 console.error("Провал JSON импорта: " + e);
@@ -493,7 +497,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                         objects: [...state.objects, ...objects],
                         selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
                     })
-                    get().saveToLocalStorage();
+                    if (get().online) pushToCloud() 
+                        else get().saveToLocalStorage();
                     callback(true);
                 }, (error) => {
 
@@ -537,7 +542,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 past: state.past.slice(0, -1),
                 future: [currentState, ...state.future]
             })
-            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
+                else get().saveToLocalStorage();
         },
 
         redo: () => {
@@ -552,7 +558,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 past: [...state.past, currentState],
                 future: state.future.slice(1)
             })
-            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
+                else get().saveToLocalStorage();
         },
 
         canUndo: () => get().past.length > 0,
@@ -571,8 +578,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 if (update.event === 'update' && update.document) {
                     try {
                         const parsedData = JSON.parse(update.document.scene_data);
+                        if (parsedData.savedBy === mySessionId) return;
                         const remoteObjects = parsedData.objects || parsedData;
-                        
                         // Обновляем локальный стейт данными от друга
                         get().setObjectsFromRealtime(remoteObjects);
                         console.log("Получены данные от напарника!");
