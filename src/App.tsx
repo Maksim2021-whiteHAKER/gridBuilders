@@ -50,9 +50,9 @@ function usePublicScene() {
     
     useEffect(() => {
         if (!viewId || roomId) return;
-            setIsReadOnly(true);
             getPublicScene(viewId)
                 .then((scene) => {
+                    setIsReadOnly(true);
                     setObjects(scene.data);
                     setPublicSceneName(scene.name);
                     console.log(`Загружена публичная сцена: ${scene.name}`);

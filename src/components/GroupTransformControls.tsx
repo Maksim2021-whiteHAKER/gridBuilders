@@ -1,3 +1,4 @@
+// src/components/GroupTransformControls.tsx
 import { useEffect, useRef, useMemo, useState, useCallback } from "react"
 import { TransformControls } from "@react-three/drei"
 import { Euler } from 'three/src/math/Euler.js'
@@ -15,8 +16,6 @@ interface GroupTransformControlsProps {
 }
 
 export function GroupTransformControls({ selectedIds, objects, updateObj, transformMode, snapEnabled, gridSize}: GroupTransformControlsProps) {
-
-    const selectedIdsStr = useMemo(() => selectedIds.join(','), [selectedIds]);
     
     const pivotRef = useRef<Group>(null);
     const [pivot, setPivot] = useState<Group | null>(null);
@@ -47,7 +46,7 @@ export function GroupTransformControls({ selectedIds, objects, updateObj, transf
 
         const count = selectedObjects.length;
         return new Vector3(sum.x / count, sum.y / count, sum.z / count);
-    }, [selectedIds.join(','), objects]); 
+    }, [selectedIds, objects]); 
 
     // 2. Синхронизируем пивот с центром масс ТОЛЬКО когда не тянем
     useEffect(() => {
@@ -56,7 +55,7 @@ export function GroupTransformControls({ selectedIds, objects, updateObj, transf
             pivotRef.current.rotation.set(0, 0, 0);
             pivotRef.current.scale.set(1, 1, 1);
         }
-    }, [centerOfMass, selectedIds.join(',')]);
+    }, [centerOfMass]);
 
     // 3. Начало перетаскивания
     const handleStart = useCallback(() => {
@@ -83,7 +82,7 @@ export function GroupTransformControls({ selectedIds, objects, updateObj, transf
                 initialObjectScale.current.set(id, [...obj.scale] as [number, number, number]);
             }
         });
-    }, [selectedIdsStr]);
+    }, [selectedIds]);
 
     // 4. Окончание перетаскивания
     const handleEnd = useCallback(() => {
@@ -152,7 +151,7 @@ export function GroupTransformControls({ selectedIds, objects, updateObj, transf
                 });
             }
         });
-    }, [selectedIdsStr, transformMode, snapEnabled, gridSize, updateObj]);
+    }, [selectedIds, transformMode, snapEnabled, gridSize, updateObj]);
 
     // 6. Глобальный обработчик отпускания мыши (страховка)
     useEffect(() => {
