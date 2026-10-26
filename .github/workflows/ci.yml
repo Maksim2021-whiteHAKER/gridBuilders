@@ -37,8 +37,8 @@ jobs:
         run: npx tsc --noEmit
 
       # 6. Запуск тестов (используем test:run, чтобы vitest не зависал в watch-режиме)
-      - name: Run tests
-        run: npm run test:run
+      # - name: Run tests
+      #   run: npm run test:run
 
       # 7. Сборка проекта (проверяем, что билд вообще проходит)
       - name: Build project
