@@ -1,6 +1,8 @@
 // src/lib/appwrite.ts
 import { Client, Account, Databases, Query, Permission, Role } from "appwrite";
 
+const knownCursors = new Set<string>();
+
 export const DATA_BASE = import.meta.env.VITE_APPWRITE_DATA_BASE_ID
 export const COLLECTION = import.meta.env.VITE_APPWRITE_COLLECTION_ID
 export const CURSORS_COLLECTION = import.meta.env.VITE_APPWRITE_CURSORS_COLLECTION_ID
@@ -215,25 +217,33 @@ export async function updateCursor(sceneId: string, userId: string, userName: st
         last_seen: new Date().toISOString()
     };
 
-    try {
-        // 1. Сначала пробуем СОЗДАТЬ документ.
-        return await databases.createDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
-    } catch (error: unknown) {
-        // 2. Безопасно проверяем свойства ошибки без использования `any`
-        const err = error as Record<string, unknown>;
-        const isConflict = err?.code === 409 || err?.code === '409' || String(err?.message || '').includes('already exists');
-
-        if (isConflict) {
-            try {
-                // Документ уже существует, просто обновляем его новыми координатами
-                return await databases.updateDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
-            } catch (updateError: unknown) {
-                console.error("Ошибка обновления существующего курсора:", updateError);
-                throw updateError;
+    // ✅ 1. Если курсор уже известен, сразу обновляем (1 запрос вместо 2)
+    if (knownCursors.has(cursorId)) {
+        try {
+            return await databases.updateDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
+        } catch (error: unknown) {
+            const err = error as Record<string, unknown>;
+            // Если вдруг документ был удален (например, пользователь перезагрузил страницу), 
+            // сбрасываем кэш и даем коду ниже создать его заново
+            if (err?.code === 404 || err?.code === '404') {
+                knownCursors.delete(cursorId);
+            } else {
+                throw error;
             }
         }
-        
-        // Любые другие ошибки (например, 401 Unauthorized) логируем и пробрасываем дальше
+    }
+
+    // ✅ 2. Пробуем создать
+    try {
+        await databases.createDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
+        knownCursors.add(cursorId); // Успех, запоминаем
+    } catch (error: unknown) {
+        const err = error as Record<string, unknown>;
+        // ✅ 3. Если 409 (уже существует), запоминаем и обновляем
+        if (err?.code === 409 || err?.code === '409') {
+            knownCursors.add(cursorId);
+            return await databases.updateDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
+        }
         console.error("Ошибка создания курсора:", error);
         throw error; 
     }

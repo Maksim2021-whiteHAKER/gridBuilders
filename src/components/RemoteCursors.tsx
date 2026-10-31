@@ -29,30 +29,13 @@ export function RemoteCursors() {
     const userName = user?.name || user?.email?.split('@')[0] || `Гость-${guestId.slice(0, 4)}`;
 
     useEffect(() => {
-        // ✅ Убрали проверку !user, теперь работает и для анонимных гостей
         if (!online || !currentSceneId) return;
 
         const userColor = getUserColor(userId);
 
-        // 1. Создаем документ курсора ОДИН РАЗ
-        const createCursorOnce = async () => {
-            if (isCursorCreatedRef.current) return;
-            try {
-                await updateCursor(currentSceneId, userId, userName, userColor, 0, 0);
-                isCursorCreatedRef.current = true;
-            } catch (error: unknown) {
-                const err = error as Record<string, unknown>;
-                if (err?.code === 409 || err?.code === '409') {
-                    isCursorCreatedRef.current = true;
-                } else {
-                    console.error('Ошибка создания курсора:', error);
-                }
-            }
-        };
+        // ✅ УДАЛИЛИ createCursorOnce() отсюда. Создание теперь ленивое.
 
-        createCursorOnce();
-
-        // ✅ 2. Throttle вместо debounce: отправляем не чаще раза в 80 мс
+        // ✅ Throttle: отправляем не чаще раза в 80 мс
         let lastSent = 0;
         const handleMouseMove = (e: MouseEvent) => {
             mousePositionRef.current = { x: e.clientX, y: e.clientY };
@@ -60,13 +43,29 @@ export function RemoteCursors() {
             if (now - lastSent < 80) return;
             lastSent = now;
             
-            if (!isCursorCreatedRef.current) return;
-            
+            // ✅ FIX: Ленивое создание при ПЕРВОМ реальном движении мыши
+            if (!isCursorCreatedRef.current) {
+                updateCursor(currentSceneId, userId, userName, userColor, mousePositionRef.current.x, mousePositionRef.current.y)
+                    .then(() => {
+                        isCursorCreatedRef.current = true;
+                    })
+                    .catch((err) => {
+                        const e = err as Record<string, unknown>;
+                        if (e?.code === 409 || e?.code === '409') {
+                            isCursorCreatedRef.current = true; // Уже создан (редкий race condition)
+                        } else {
+                            console.error('Ошибка создания курсора при первом движении:', err);
+                        }
+                    });
+                return; // Прерываем, чтобы не делать лишний updateDocument в эту же миллисекунду
+            }
+
+            // Обычное обновление для последующих движений
             updateCursor(currentSceneId, userId, userName, userColor, mousePositionRef.current.x, mousePositionRef.current.y)
                 .catch(() => {});
         };
 
-        // ✅ 3. Heartbeat: обновляем last_seen каждые 2 секунды, даже если мышь неподвижна
+        // ✅ Heartbeat: обновляем last_seen каждые 2 секунды (защищен флагом isCursorCreatedRef)
         const heartbeat = setInterval(() => {
             if (!isCursorCreatedRef.current) return;
             updateCursor(currentSceneId, userId, userName, userColor, mousePositionRef.current.x, mousePositionRef.current.y)
