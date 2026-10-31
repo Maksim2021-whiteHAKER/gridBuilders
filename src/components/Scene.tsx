@@ -10,7 +10,7 @@ import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { subscribeToSceneUpdates } from '../lib/realtime.ts'
-import { Mesh, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
+import { Mesh, Object3D, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
 import { useIsDesktop } from '../hooks/useDeviceType.ts'
 
 type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>
@@ -117,7 +117,7 @@ function ObjectMaterial({obj, isSelected } : {obj: SceneObject, isSelected:boole
 function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:boolean, setMesh: (mesh: Mesh | null) => void}){
     const { selectObject, addToSelection, objects } = useSceneStore();
 
-    const handleObjectClick = (e: any) => {
+    const handleObjectClick = (e: React.MouseEvent<HTMLElement>) => {
         e.stopPropagation();
         const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
         
@@ -177,14 +177,11 @@ function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:b
 
 function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolean }) {
     const { updateObj, transformMode, snapEnabled, gridSize } = useSceneStore();
-    
-    // ✅ ИСПРАВЛЕНИЕ: Подписываемся на изменения объектов, чтобы дети обновлялись реактивно
     const allObjects = useSceneStore(state => state.objects);
     const selectedIds = useSceneStore(state => state.selectedIds);
     
     const [isTransforming, setIsTransforming] = useState(false);
     
-    // Рефы для обоих типов объектов
     const groupRef = useRef<Group>(null);
     const meshRef = useRef<Mesh>(null);
 
@@ -195,7 +192,7 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
             meshRef.current.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
             meshRef.current.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
         }
-    }, [obj.position, obj.rotation, obj.scale, isTransforming]);
+    }, [obj.position, obj.rotation, obj.scale, isTransforming, obj.type]);
 
     // Синхронизация для групп (Group)
     useEffect(() => {
@@ -204,18 +201,17 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
             groupRef.current.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
             groupRef.current.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
         }
-    }, [obj.position, obj.rotation, obj.scale, isTransforming]);
+    }, [obj.position, obj.rotation, obj.scale, isTransforming, obj.type]);
 
     const handleObjectUpdateEnd = () => {
+        // ✅ Чтение .current ЗДЕСЬ разрешено, так как это обработчик события, а не рендер!
         if (obj.type === 'model' && groupRef.current) {
-            // Сохраняем трансформации самой группы
             updateObj(obj.id, {
                 position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
                 rotation: [groupRef.current.rotation.x, groupRef.current.rotation.y, groupRef.current.rotation.z],
                 scale: [groupRef.current.scale.x, groupRef.current.scale.y, groupRef.current.scale.z]
             });
         } else if (meshRef.current) {
-            // Сохраняем трансформации обычного объекта
             updateObj(obj.id, {
                 position: [
                     snapEnabled ? Math.round(meshRef.current.position.x / gridSize) * gridSize : meshRef.current.position.x,
@@ -231,7 +227,6 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
 
     // 🌟 1. Если это ГРУППА (model)
     if (obj.type === 'model') {
-        // ✅ ИСПРАВЛЕНИЕ: Используем allObjects из хука, а не getState()
         const children = allObjects.filter(child => child.parentId === obj.id);
 
         return (
@@ -241,7 +236,6 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
                 rotation={obj.rotation} 
                 scale={obj.scale}
             >
-                {/* Рекурсивно рендерим детей ВНУТРИ группы */}
                 {children.map(child => (
                     <SceneObject 
                         key={child.id} 
@@ -250,10 +244,10 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
                     />
                 ))}
                 
-                {/* TransformControls вешаем на саму группу */}
-                {isSelected && groupRef.current && (
+                {/* ✅ ИСПРАВЛЕНИЕ: Безопасное приведение типа для удовлетворения строгого TS */}
+                {isSelected && (
                     <TransformControls 
-                        object={groupRef.current}
+                        object={groupRef as unknown as React.RefObject<Object3D>}
                         mode={transformMode}
                         onMouseDown={() => setIsTransforming(true)}
                         onMouseUp={handleObjectUpdateEnd}
@@ -267,9 +261,11 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
     return (
         <>
             <CreateObject obj={obj} isSelected={isSelected} setMesh={(mesh) => { meshRef.current = mesh; }} />
-            {selectedIds.length === 1 && isSelected && meshRef.current && (
+            
+            {/* ✅ ИСПРАВЛЕНИЕ: Безопасное приведение типа для удовлетворения строгого TS */}
+            {isSelected && (
                 <TransformControls 
-                    object={meshRef.current}
+                    object={meshRef as unknown as React.RefObject<Object3D>}
                     mode={transformMode} 
                     onMouseDown={() => setIsTransforming(true)}
                     onMouseUp={handleObjectUpdateEnd}

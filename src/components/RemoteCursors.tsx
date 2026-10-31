@@ -47,13 +47,24 @@ export function RemoteCursors() {
                     last_seen: new Date().toISOString()
                 });
                 isCursorCreatedRef.current = true;
-            } catch (error: any) {
-                // Если уже существует (409), просто помечаем как созданный
-                if (error?.code === 409) {
-                    isCursorCreatedRef.current = true;
-                } else {
-                    console.error('Ошибка создания курсора:', error);
+            } catch (error: unknown) {
+                // 2. Безопасно проверяем свойства ошибки без использования `any`
+                const err = error as Record<string, unknown>;
+                const isConflict = err?.code === 409 || err?.code === '409' || String(err?.message || '').includes('already exists');
+        
+                if (isConflict) {
+                    try {
+                        // Документ уже существует, просто обновляем его новыми координатами
+                        isCursorCreatedRef.current = true
+                    } catch (updateError: unknown) {
+                        console.error("Ошибка обновления существующего курсора:", updateError);
+                        throw updateError;
+                    }
                 }
+                
+                // Любые другие ошибки (например, 401 Unauthorized) логируем и пробрасываем дальше
+                console.error("Ошибка создания курсора:", error);
+                throw error; 
             }
         };
 

@@ -92,7 +92,7 @@ export function KeyboardShortcuts() {
         return () => { 
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll, objects, controls]);
+    }, [selectedIds, deleteObj, duplicateObject, setTransformMode, clearSelection, undo, redo, selectAll, objects, controls, groupSelected, ungroupSelected]);
 
     return null;
 }

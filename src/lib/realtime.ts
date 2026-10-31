@@ -74,7 +74,7 @@ export function subscribeToCursorUpdates(sceneId: string, onEvent: (update: Curs
     // Подписываемся на всю коллекцию, но фильтруем по scene_id в колбэке
     const channel = `databases.${DATA_BASE}.collections.${CURSORS_COLLECTION}.documents`;
 
-    const unsubscribe = client.subscribe(channel, (response: any) => {
+    const unsubscribe = client.subscribe(channel, (response: AppwriteRealtimeResponse) => {
         const matchedEvent = response.events.find((e: string) => 
             e.endsWith('.create') || e.endsWith('.update') || e.endsWith('.delete')
         );

@@ -243,7 +243,7 @@ export async function deleteCursor(sceneId: string, userId: string) {
     const cursorId = generateCursorId(sceneId, userId);
     try {
         await databases.deleteDocument(DATA_BASE, CURSORS_COLLECTION, cursorId);
-    } catch (e) {
+    } catch {
         // Игнорируем ошибки, если курсора уже нет
     }
 }
