@@ -75,12 +75,6 @@ export function createGroupFromSelection(
 /**
  * Разгруппировывает объект (Ungroup)
  */
-/**
- * Разгруппировывает объект (Ungroup)
- */
-/**
- * Разгруппировывает объект (Ungroup)
- */
 export function ungroupObject(
     allObjects: SceneObject[],
     groupId: string

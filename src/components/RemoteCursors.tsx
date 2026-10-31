@@ -1,9 +1,9 @@
-// src/components/RemoteCursors.tsx
 import { useEffect, useState, useRef } from 'react';
 import { useSceneStore } from '../store/sceneStore.ts';
 import { useAuthStore } from '../store/authStore.ts';
+import { updateCursor, deleteCursor } from '../lib/appwrite.ts'; // ✅ Используем централизованные функции
 import { subscribeToCursorUpdates, type CursorData } from '../lib/realtime.ts';
-import { databases, DATA_BASE, CURSORS_COLLECTION } from '../lib/appwrite.ts';
+import { generatedId } from '../utils/generated.js';
 
 function getUserColor(userId: string) {
     let hash = 0;
@@ -20,96 +20,75 @@ export function RemoteCursors() {
     const [cursors, setCursors] = useState<Record<string, CursorData>>({});
     const unsubscribeRef = useRef<(() => void) | null>(null);
     
-    // Флаг: создан ли уже документ моего курсора
     const isCursorCreatedRef = useRef(false);
     const mousePositionRef = useRef({ x: 0, y: 0 });
-    const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    
+    // ✅ Фолбэк для гостей: если нет аккаунта, генерируем временный ID
+    const [guestId] = useState(() => generatedId());
+    const userId = user?.$id || `guest_${guestId}`;
+    const userName = user?.name || user?.email?.split('@')[0] || `Гость-${guestId.slice(0, 4)}`;
 
     useEffect(() => {
-        if (!online || !currentSceneId || !user) return;
+        // ✅ Убрали проверку !user, теперь работает и для анонимных гостей
+        if (!online || !currentSceneId) return;
 
-        const userColor = getUserColor(user.$id);
-        const userName = user.name || user.email?.split('@')[0] || 'Гость';
-        const cursorId = `${currentSceneId.substring(0, 18)}_${user.$id.substring(0, 17)}`;
+        const userColor = getUserColor(userId);
 
-        // ✅ 1. Создаем документ курсора ОДИН РАЗ при монтировании
+        // 1. Создаем документ курсора ОДИН РАЗ
         const createCursorOnce = async () => {
             if (isCursorCreatedRef.current) return;
-            
             try {
-                await databases.createDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, {
-                    scene_id: currentSceneId,
-                    user_id: user.$id,
-                    user_name: userName,
-                    color: userColor,
-                    x: 0,
-                    y: 0,
-                    last_seen: new Date().toISOString()
-                });
+                await updateCursor(currentSceneId, userId, userName, userColor, 0, 0);
                 isCursorCreatedRef.current = true;
             } catch (error: unknown) {
-                // 2. Безопасно проверяем свойства ошибки без использования `any`
                 const err = error as Record<string, unknown>;
-                const isConflict = err?.code === 409 || err?.code === '409' || String(err?.message || '').includes('already exists');
-        
-                if (isConflict) {
-                    try {
-                        // Документ уже существует, просто обновляем его новыми координатами
-                        isCursorCreatedRef.current = true
-                    } catch (updateError: unknown) {
-                        console.error("Ошибка обновления существующего курсора:", updateError);
-                        throw updateError;
-                    }
+                if (err?.code === 409 || err?.code === '409') {
+                    isCursorCreatedRef.current = true;
+                } else {
+                    console.error('Ошибка создания курсора:', error);
                 }
-                
-                // Любые другие ошибки (например, 401 Unauthorized) логируем и пробрасываем дальше
-                console.error("Ошибка создания курсора:", error);
-                throw error; 
             }
         };
 
         createCursorOnce();
 
-        // ✅ 2. Отслеживаем движение мыши и ОБНОВЛЯЕМ существующий документ
+        // ✅ 2. Throttle вместо debounce: отправляем не чаще раза в 80 мс
+        let lastSent = 0;
         const handleMouseMove = (e: MouseEvent) => {
             mousePositionRef.current = { x: e.clientX, y: e.clientY };
-
-            if (updateTimeoutRef.current) {
-                clearTimeout(updateTimeoutRef.current);
-            }
-
-            updateTimeoutRef.current = setTimeout(async () => {
-                if (!isCursorCreatedRef.current) return;
-
-                try {
-                    // Просто обновляем координаты (никаких 409!)
-                    await databases.updateDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, {
-                        x: mousePositionRef.current.x,
-                        y: mousePositionRef.current.y,
-                        last_seen: new Date().toISOString()
-                    });
-                } catch (error) {
-                    console.error('Ошибка обновления курсора:', error);
-                }
-            }, 50);
+            const now = Date.now();
+            if (now - lastSent < 80) return;
+            lastSent = now;
+            
+            if (!isCursorCreatedRef.current) return;
+            
+            updateCursor(currentSceneId, userId, userName, userColor, mousePositionRef.current.x, mousePositionRef.current.y)
+                .catch(() => {});
         };
+
+        // ✅ 3. Heartbeat: обновляем last_seen каждые 2 секунды, даже если мышь неподвижна
+        const heartbeat = setInterval(() => {
+            if (!isCursorCreatedRef.current) return;
+            updateCursor(currentSceneId, userId, userName, userColor, mousePositionRef.current.x, mousePositionRef.current.y)
+                .catch(() => {});
+        }, 2000);
 
         window.addEventListener('mousemove', handleMouseMove);
         
         const handleBeforeUnload = () => {
-            databases.deleteDocument(DATA_BASE, CURSORS_COLLECTION, cursorId).catch(() => {});
+            deleteCursor(currentSceneId, userId);
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
 
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-            databases.deleteDocument(DATA_BASE, CURSORS_COLLECTION, cursorId).catch(() => {});
+            clearInterval(heartbeat);
+            deleteCursor(currentSceneId, userId);
         };
-    }, [online, currentSceneId, user]);
+    }, [online, currentSceneId, userId, userName]);
 
-    // Подписка на чужие курсоры
+    // Подписка на чужие курсоры (без изменений)
     useEffect(() => {
         if (!online || !currentSceneId) return;
 
@@ -133,7 +112,7 @@ export function RemoteCursors() {
         };
     }, [online, currentSceneId]);
 
-    // Очистка "зависших" курсоров
+    // Очистка "зависших" курсоров (без изменений)
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
@@ -159,12 +138,12 @@ export function RemoteCursors() {
 
     return (
         <>
-            {Object.entries(cursors).map(([userId, cursor]) => {
-                if (user && userId === user.$id) return null;
+            {Object.entries(cursors).map(([cursorUserId, cursor]) => {
+                if (userId === cursorUserId) return null; // Не показываем свой курсор
 
                 return (
                     <div
-                        key={userId}
+                        key={cursorUserId}
                         style={{
                             position: 'fixed',
                             left: cursor.x,

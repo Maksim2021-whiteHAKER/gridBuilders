@@ -293,15 +293,15 @@ function ClickOutsideHandle() {
             const raycaster = new Raycaster();
             raycaster.setFromCamera(mouse, camera);
 
-            const meshes = scene.children.filter(
-                (child): child is Mesh => {
-                    return child.type === 'Mesh' && !(child as Mesh).userData?.isSystemObject;
-                }
-            );
+            // ✅ FIX: intersectObjects с true (рекурсивно) + фильтрация системных объектов
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            const validIntersects = intersects.filter(intersect => {
+                const obj = intersect.object as Mesh;
+                return obj.type === 'Mesh' && !obj.userData?.isSystemObject;
+            });
 
-            const intersects = raycaster.intersectObjects(meshes, false);
-
-            if (intersects.length === 0) {
+            if (validIntersects.length === 0) {
                 clearSelection();
             }
         };

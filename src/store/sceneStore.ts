@@ -207,7 +207,7 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         groupSelected: () => {
             const state = get();
             if (state.selectedIds.length < 2) {
-                console.warn(`должно быть выбрано как минимум два объекта`)
+                console.warn(`должно быть выбрано как минимум два объекта`);
                 return;
             }
 
@@ -223,22 +223,25 @@ export const useSceneStore = create<SceneStore>((set, get) => {
 
             const { newObjects, groupId} = createGroupFromSelection(state.objects, state.selectedIds);
 
-            set({objects: newObjects, selectedIds: [groupId]});
+            // ✅ FIX: Сохраняем состояние в историю перед группировкой
+            set({
+                objects: newObjects, 
+                selectedIds: [groupId],
+                past: [...state.past.slice(-49), getCurrentState(state)],
+                future: []
+            });
         },
         
         ungroupSelected: () => {
             const state = get();
             
-            // 1. Сначала ищем, не выбрана ли сама группа
             let selectedGroup = state.objects.find(
                 obj => obj.id === state.selectedIds[0] && obj.type === 'model'
             );
         
-            // 2. Если нет, проверяем, не является ли выбранный объект частью группы
             if (!selectedGroup && state.selectedIds.length > 0) {
                 const firstSelectedObj = state.objects.find(o => o.id === state.selectedIds[0]);
                 if (firstSelectedObj?.parentId) {
-                    // Находим родительскую группу по ID
                     selectedGroup = state.objects.find(o => o.id === firstSelectedObj.parentId);
                 }
             }
@@ -251,12 +254,11 @@ export const useSceneStore = create<SceneStore>((set, get) => {
             const newObjects = ungroupObject(state.objects, selectedGroup.id);
             const newSelectedIds = selectedGroup.children || [];
         
-            // ✅ Используем set с явным указанием всех полей
+            // ✅ FIX: Сохраняем состояние в историю вместо полной очистки past/future
             set({ 
                 objects: newObjects, 
                 selectedIds: newSelectedIds,
-                // ✅ Очищаем past/future, чтобы избежать конфликтов истории
-                past: [],
+                past: [...state.past.slice(-49), getCurrentState(state)],
                 future: []
             });
         },
