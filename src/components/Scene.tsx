@@ -115,33 +115,54 @@ function ObjectMaterial({obj, isSelected } : {obj: SceneObject, isSelected:boole
 }
 
 function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:boolean, setMesh: (mesh: Mesh | null) => void}){
+    const { selectObject, addToSelection, objects } = useSceneStore();
+
+    const handleObjectClick = (e: any) => {
+        e.stopPropagation();
+        const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
+        
+        // ✅ ЛОГИКА ГРУПП: Если у объекта есть родитель (он в группе) или это сама группа
+        if (obj.parentId || obj.type === 'model') {
+            const groupId = obj.parentId || obj.id;
+            
+            // Находим всех детей этой группы
+            const groupChildren = objects.filter(child => child.parentId === groupId);
+            
+            if (groupChildren.length > 0) {
+                // Если нажат Ctrl — добавляем всю группу к текущему выделению
+                if (isCtrlOrCmd) {
+                    groupChildren.forEach(child => addToSelection(child.id));
+                } else {
+                    // Иначе выделяем только всю группу
+                    selectObject(groupChildren[0].id);
+                    for (let i = 1; i < groupChildren.length; i++) {
+                        addToSelection(groupChildren[i].id);
+                    }
+                }
+                return;
+            }
+        }
+
+        // ✅ ОБЫЧНЫЙ КЛИК (для объектов не в группе)
+        if (isCtrlOrCmd){
+            addToSelection(obj.id);                
+        } else {
+            selectObject(obj.id);
+        }
+    };
+
     if (obj.type === 'text') {
         return (
             <Text3D ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} 
             fontSize={obj.fontSize || 0.5} color={obj.color} anchorX="center" anchorY="middle" 
-            onClick={(e) => {
-                e.stopPropagation()
-                const isctrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
-                const store = useSceneStore.getState();
-                if (isctrlOrCmd) store.addToSelection(obj.id);
-                else store.selectObject(obj.id)
-            }}> {obj.text || 'Текст'}
+            onClick={handleObjectClick}> {obj.text || 'Текст'}
             </Text3D>
         )
     }
 
     return(
         <mesh key={obj.id} ref={setMesh} position={obj.position} rotation={obj.rotation} scale={obj.scale} castShadow receiveShadow 
-            onClick={(e) => {
-            e.stopPropagation()
-            const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
-            const store = useSceneStore.getState();
-            if (isCtrlOrCmd){
-                store.addToSelection(obj.id)                
-            } else {
-                store.selectObject(obj.id)
-            }
-        }}>
+            onClick={handleObjectClick}>
             {obj.type === 'box' && <boxGeometry args={[1, 1, 1]} />}
             {obj.type === 'sphere' && <sphereGeometry args={[0.5, 32, 32]} />}
             {obj.type === 'cylinder' && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}

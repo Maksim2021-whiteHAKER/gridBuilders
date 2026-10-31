@@ -3,6 +3,7 @@ import { Client, Account, Databases, Query, Permission, Role } from "appwrite";
 
 export const DATA_BASE = import.meta.env.VITE_APPWRITE_DATA_BASE_ID
 export const COLLECTION = import.meta.env.VITE_APPWRITE_COLLECTION_ID
+export const CURSORS_COLLECTION = import.meta.env.VITE_APPWRITE_CURSORS_COLLECTION_ID
 
 export const APPWRITE_READY = Boolean(
     import.meta.env.VITE_APPWRITE_ENDPOINT &&
@@ -22,6 +23,13 @@ function normalized(raw: string) {
     const parsed = raw ? JSON.parse(raw) : [];
     const objects = Array.isArray(parsed) ? parsed : (parsed?.objects ?? [])
     return objects;
+}
+
+function generateCursorId(sceneId: string, userId: string): string {
+    // Appwrite ID состоят из a-z, 0-9, поэтому substring абсолютно безопасен от коллизий
+    const safeSceneId = sceneId.substring(0, 18);
+    const safeUserId = userId.substring(0, 17);
+    return `${safeSceneId}_${safeUserId}`; // Ровно 36 символов
 }
 
 export function captureScreenScreenshot(): string | null {
@@ -193,6 +201,51 @@ export async function updateSceneData(documentId: string, data: Record<string, u
     return databases.updateDocument(DATA_BASE, COLLECTION, documentId, {
       scene_data: JSON.stringify(data),
     });
+}
+
+export async function updateCursor(sceneId: string, userId: string, userName: string, color: string, x: number, y: number) {
+    const cursorId = generateCursorId(sceneId, userId);
+    const payload = { 
+        scene_id: sceneId, 
+        user_id: userId, 
+        user_name: userName, 
+        color, 
+        x, 
+        y, 
+        last_seen: new Date().toISOString()
+    };
+
+    try {
+        // 1. Сначала пробуем СОЗДАТЬ документ.
+        return await databases.createDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
+    } catch (error: unknown) {
+        // 2. Безопасно проверяем свойства ошибки без использования `any`
+        const err = error as Record<string, unknown>;
+        const isConflict = err?.code === 409 || err?.code === '409' || String(err?.message || '').includes('already exists');
+
+        if (isConflict) {
+            try {
+                // Документ уже существует, просто обновляем его новыми координатами
+                return await databases.updateDocument(DATA_BASE, CURSORS_COLLECTION, cursorId, payload);
+            } catch (updateError: unknown) {
+                console.error("Ошибка обновления существующего курсора:", updateError);
+                throw updateError;
+            }
+        }
+        
+        // Любые другие ошибки (например, 401 Unauthorized) логируем и пробрасываем дальше
+        console.error("Ошибка создания курсора:", error);
+        throw error; 
+    }
+}
+
+export async function deleteCursor(sceneId: string, userId: string) {
+    const cursorId = generateCursorId(sceneId, userId);
+    try {
+        await databases.deleteDocument(DATA_BASE, CURSORS_COLLECTION, cursorId);
+    } catch (e) {
+        // Игнорируем ошибки, если курсора уже нет
+    }
 }
 
 export { client }

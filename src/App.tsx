@@ -12,6 +12,7 @@ import { useSceneStore } from './store/sceneStore.ts';
 import { lazy, Suspense } from 'react';
 import { WebGLGuard } from './components/WebGLGuard.tsx';
 import { SceneErrorBoundary } from './components/SceneErrorBoundary.tsx';
+import { RemoteCursors } from './components/RemoteCursors.tsx';
 
 const AuthModal = lazy(() => import('./components/modals/AuthModal.tsx').then(module => ({default: module.AuthModal})))
 const ProjectModal = lazy(() => import('./components/modals/ProjectModal.tsx').then(module => ({default: module.ProjectModal})))
@@ -189,6 +190,8 @@ function App() {
                     <Scene_GB />
                 </WebGLGuard>
             </SceneErrorBoundary>
+
+            <RemoteCursors />
 
             {!isReadOnly && currentSceneId && (
                 <div className="collab-indicator">

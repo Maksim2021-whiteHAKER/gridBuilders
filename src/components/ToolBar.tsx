@@ -162,44 +162,8 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                                     {mode === 'translate' ? '↕️' : mode === 'rotate' ? '🔄' : '⤢'}
                                 </button>
                             ))}
-                            {/* Если что-то выбрано, показываем кнопку Группировки или Разгруппировки */}
-                            {selectedIds.length > 0 && (
-                            showUngroup ? (
-                                // Показываем кнопку Ungroup
-                                <button 
-                                    key="ungroup" 
-                                    className="btn-control-main" 
-                                    onClick={ungroupSelected} 
-                                    title="Ungroup (Ctrl+Shift+G)"
-                                    style={{
-                                        flex: 1, padding: '10px 4px', background: '#14151f',
-                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6,
-                                        fontSize: deviceType === 'tablet' ? 16 : 12, minHeight: 40, minWidth: 75
-                                    }}
-                                >
-                                    ✂️ Ungroup
-                                </button>
-                            ) : (
-                                // Показываем кнопку Group
-                                <button 
-                                    key="group" 
-                                    className="btn-control-main" 
-                                    onClick={groupSelected} 
-                                    disabled={selectedIds.length < 2} 
-                                    title="Group as Object (Ctrl+G)"
-                                    style={{
-                                        flex: 1, padding: '10px 4px', 
-                                        background: selectedIds.length >= 2 ? '#aa3bff' : '#0a0b15',
-                                        color: selectedIds.length >= 2 ? 'white' : '#6d7280', 
-                                        border: '1px solid #2e303a', borderRadius: 6,
-                                        fontSize: deviceType === 'tablet' ? 16 : 12, minHeight: 40, minWidth: 75,
-                                        cursor: selectedIds.length >= 2 ? 'pointer' : 'not-allowed'
-                                    }}
-                                >
-                                    🔗 Group ({selectedIds.length})
-                                </button>
-                            )
-                        )}
+                            <GroupUnGroup selectedIds={selectedIds} showUngroup={showUngroup} groupSelected={groupSelected} 
+                            ungroupSelected={ungroupSelected} deviceType={deviceType} />
                         </div>
                         <button onClick={() => setShowExportModal(true)}
                             style={{
@@ -413,12 +377,9 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         <button className="btn-control-main" onClick={() => setTransformMode('scale')} style={{
                             background: transformMode === 'scale' ? '#aa3bff' : '#14151f',
                         }}>⤢ S</button>
-                        <button className="btn-control-main" onClick={groupSelected} disabled={selectedIds.length < 2} title="Group as Object (Ctrl+G)">
-                            🔗 Group ({selectedIds.length})
-                        </button>
-                        <button className="btn-control-main" onClick={ungroupSelected} disabled={!isGroup} title="Ungroup (Ctrl+Shift+G)">
-                            ✂️ Ungroup
-                        </button>        
+                        <GroupUnGroup selectedIds={selectedIds} showUngroup={showUngroup} groupSelected={groupSelected} 
+                            ungroupSelected={ungroupSelected} deviceType={deviceType}                        
+                        />
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, padding: '8px 12px', background: '#14151f', borderRadius: 4, border: '1px solid #2e303a' }}>
@@ -511,6 +472,50 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
             )}
         </div>
     )
+}
+
+// Вынесенный переиспользуемый компонент для кнопок Group/Ungroup
+function GroupUnGroup({ selectedIds, showUngroup, groupSelected, ungroupSelected, deviceType }: {
+    selectedIds: string[]; showUngroup: boolean; groupSelected: () => void; ungroupSelected: () => void; deviceType: string;
+}) {
+    // Если ничего не выбрано, ничего не рендерим
+    if (selectedIds.length === 0) return null;
+
+    const fontSize = deviceType === 'tablet' ? 16 : deviceType === 'mobile' ? 12 : 15;
+
+    return showUngroup ? (
+        <button 
+            key="ungroup" 
+            className="btn-control-main" 
+            onClick={ungroupSelected} 
+            title="Ungroup (Ctrl+Shift+G)"
+            style={{
+                flex: 1, padding: '10px 4px', background: '#14151f',
+                color: 'white', border: '1px solid #2e303a', borderRadius: 6,
+                fontSize: fontSize, minHeight: 40, minWidth: 75
+            }}
+        >
+            ✂️ Ungroup
+        </button>
+    ) : (
+        <button 
+            key="group" 
+            className="btn-control-main" 
+            onClick={groupSelected} 
+            disabled={selectedIds.length < 2} 
+            title="Group as Object (Ctrl+G)"
+            style={{
+                flex: 1, padding: '10px 4px', 
+                background: selectedIds.length >= 2 ? '#aa3bff' : '#0a0b15',
+                color: selectedIds.length >= 2 ? 'white' : '#6d7280', 
+                border: '1px solid #2e303a', borderRadius: 6,
+                fontSize: fontSize, minHeight: 40, minWidth: 75,
+                cursor: selectedIds.length >= 2 ? 'pointer' : 'not-allowed'
+            }}
+        >
+            🔗 Group ({selectedIds.length})
+        </button>
+    );
 }
 
 function AuthBlock({onAuthClick, user, onSignOut, isSmall}: {onAuthClick: () => void, user: Models.User<Models.Preferences> | null, onSignOut: () => void, isSmall: boolean}) {
