@@ -17,13 +17,34 @@ const mySessionId = generatedId()
 
 export type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text' | 'model'
 
-function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+// ✅ 100% типобезопасный debounce без 'any' и без конфликтов возвращаемых типов
+function debounce<TArgs extends unknown[]>(
+    fn: (...args: TArgs) => unknown,
+    delay: number
+): (...args: TArgs) => void {
     let timer: ReturnType<typeof setTimeout>;
-    return ((...args: unknown[]) => {
+    return (...args: TArgs) => {
         clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay)
-    }) as T;
+        timer = setTimeout(() => {
+            fn(...args);
+        }, delay);
+    };
 }
+
+const debouncedSaveToLocalStorage = debounce((state: SceneStore) => {
+    const sceneData = {
+        objects: state.objects,
+        transformMode: state.transformMode,
+        snapEnabled: state.snapEnabled,
+        gridSize: state.gridSize,
+        savedAt: new Date().toISOString()
+    };
+    try {
+        localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData));
+    } catch (e) {
+        console.error("Провал сохранения в Локальное хранилище: " + e);
+    }
+}, 1000); // Сохраняем не чаще 1 раза в секунду
 
 export interface SceneObject {
     id: string,
@@ -118,6 +139,7 @@ interface SceneStore extends SceneState {
     importOBJ: (file: File, callback: (success: boolean) => void) => void; 
         
     // Undo/Redo
+    pushHistory: () => void,
     undo: () => void,
     redo: () => void,
     canUndo: () => boolean,
@@ -267,7 +289,7 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         },
 
         interactionMode: 'create',
-        setInteractionMode: (mode) => set({ interactionMode: mode }),
+        setInteractionMode: (mode: 'create' | 'select') => set({ interactionMode: mode }),
 
         setObjectsFromRealtime: (newObjects: SceneObject[]) => {
             const state = get()
@@ -463,21 +485,7 @@ export const useSceneStore = create<SceneStore>((set, get) => {
 
         //сохран и загруз
         saveToLocalStorage: () => {
-            const state = get();
-            const sceneData = {
-            objects: state.objects,
-            transformMode: state.transformMode,
-            snapEnabled: state.snapEnabled,
-            gridSize: state.gridSize,
-            savedAt: new Date().toISOString()
-
-            };
-            try {
-                localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData))
-                set({ lastSaved: Date.now() })
-            } catch (e) {
-                console.error("Провал сохранения в Локальное хранилище: " + e);
-            }
+            debouncedSaveToLocalStorage(get())        
         },
 
         loadFromLocalStorage: () => {
@@ -638,6 +646,11 @@ export const useSceneStore = create<SceneStore>((set, get) => {
 
         canUndo: () => get().past.length > 0,
         canRedo: () => get().future.length > 0,
+
+        pushHistory: () => set({
+            past: [...get().past.slice(-49), getCurrentState(get())],
+            future: [],
+        }),
 
         startCollab: (sceneId: string) => {
             // Включаем онлайн-режим

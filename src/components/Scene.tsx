@@ -1,5 +1,5 @@
 // /src/components/Scene.tsx
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsDrei, Grid, Line, TransformControls, Outlines, Text as Text3D } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
@@ -9,8 +9,7 @@ import { CameraFocusAuto, KeyboardShortcuts } from './HotKeyboard.tsx'
 import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { subscribeToSceneUpdates } from '../lib/realtime.ts'
-import { Mesh, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
+import { Mesh, Object3D, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
 import { useIsDesktop } from '../hooks/useDeviceType.ts'
 
 type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>
@@ -176,14 +175,26 @@ function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:b
 }
 
 function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolean }) {
-    const { updateObj, transformMode, snapEnabled, gridSize } = useSceneStore();
+    const { updateObj, transformMode, snapEnabled, gridSize, selectedIds } = useSceneStore();
     const allObjects = useSceneStore(state => state.objects);
-    const selectedIds = useSceneStore(state => state.selectedIds);
     
+    // ✅ 1. ВОЗВРАЩАЕМ isTransforming для защиты от перезаписи координат во время драга
     const [isTransforming, setIsTransforming] = useState(false);
+    const [refReady, setRefReady] = useState(false);
     
     const groupRef = useRef<Group>(null);
     const meshRef = useRef<Mesh>(null);
+
+    // ✅ 3. Оборачиваем ref-колбэки в useCallback, чтобы избежать шума при ререндерах
+    const handleGroupRef = useCallback((g: Group | null) => {
+        groupRef.current = g;
+        setRefReady(!!g);
+    }, []);
+
+    const handleMeshRef = useCallback((m: Mesh | null) => {
+        meshRef.current = m;
+        setRefReady(!!m);
+    }, []);
 
     // Синхронизация для обычных объектов (Mesh)
     useEffect(() => {
@@ -192,7 +203,7 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
             meshRef.current.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
             meshRef.current.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
         }
-    }, [obj.position, obj.rotation, obj.scale, isTransforming, obj.type]);
+    }, [obj.position, obj.rotation, obj.scale, obj.type, isTransforming]); // ✅ isTransforming в зависимостях
 
     // Синхронизация для групп (Group)
     useEffect(() => {
@@ -201,7 +212,7 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
             groupRef.current.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
             groupRef.current.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
         }
-    }, [obj.position, obj.rotation, obj.scale, isTransforming, obj.type]);
+    }, [obj.position, obj.rotation, obj.scale, obj.type, isTransforming]); // ✅ isTransforming в зависимостях
 
     const handleObjectUpdateEnd = () => {
         if (obj.type === 'model' && groupRef.current) {
@@ -221,59 +232,64 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
                 scale: [meshRef.current.scale.x, meshRef.current.scale.y, meshRef.current.scale.z]
             });
         }
-        setIsTransforming(false);
+        setIsTransforming(false); // ✅ Сбрасываем флаг после окончания драга
     };
 
     // 🌟 1. Если это ГРУППА (model)
     if (obj.type === 'model') {
         const children = allObjects.filter(child => child.parentId === obj.id);
+        const isOnlySelected = isSelected && selectedIds.length === 1;
 
-        // Создаем контент группы отдельно
-        const groupContent = (
-            <group 
-                ref={groupRef} 
-                position={obj.position} 
-                rotation={obj.rotation} 
-                scale={obj.scale}
-            >
-                {children.map(child => (
-                    <SceneObject 
-                        key={child.id} 
-                        obj={child} 
-                        isSelected={selectedIds.includes(child.id)} 
+        return (
+            <>
+                <group 
+                    ref={handleGroupRef} // ✅ Используем useCallback
+                    position={obj.position} 
+                    rotation={obj.rotation} 
+                    scale={obj.scale}
+                >
+                    {children.map(child => (
+                        <SceneObject 
+                            key={child.id} 
+                            obj={child} 
+                            isSelected={selectedIds.includes(child.id)} 
+                        />
+                    ))}
+                </group>
+                
+                {isOnlySelected && refReady && (
+                    <TransformControls 
+                        object={groupRef as unknown as React.RefObject<Object3D>}
+                        mode={transformMode}
+                        onMouseDown={() => setIsTransforming(true)} // ✅ Устанавливаем флаг при начале драга
+                        onMouseUp={handleObjectUpdateEnd}
                     />
-                ))}
-            </group>
+                )}
+            </>
         );
-
-        // ✅ ПАТТЕРН ОБЕРТКИ: Если выделено, оборачиваем в TransformControls. 
-        // Это на 100% решает ошибку "not in scene graph" и убирает необходимость читать ref.current при рендере!
-        return isSelected ? (
-            <TransformControls 
-                mode={transformMode}
-                onMouseDown={() => setIsTransforming(true)}
-                onMouseUp={handleObjectUpdateEnd}
-            >
-                {groupContent}
-            </TransformControls>
-        ) : groupContent;
     }
 
     // 🌟 2. Если это ОБЫЧНЫЙ объект
-    const meshContent = (
-        <CreateObject obj={obj} isSelected={isSelected} setMesh={(mesh) => { meshRef.current = mesh; }} />
-    );
+    const isOnlySelected = isSelected && selectedIds.length === 1;
 
-    // ✅ ТОТ ЖЕ ПАТТЕРН ОБЕРТКИ для обычных объектов
-    return isSelected ? (
-        <TransformControls 
-            mode={transformMode} 
-            onMouseDown={() => setIsTransforming(true)}
-            onMouseUp={handleObjectUpdateEnd}
-        >
-            {meshContent}
-        </TransformControls>
-    ) : meshContent;
+    return (
+        <>
+            <CreateObject 
+                obj={obj} 
+                isSelected={isSelected} 
+                setMesh={handleMeshRef} // ✅ Используем useCallback
+            />
+            
+            {isOnlySelected && refReady && (
+                <TransformControls 
+                    object={meshRef as unknown as React.RefObject<Object3D>}
+                    mode={transformMode} 
+                    onMouseDown={() => setIsTransforming(true)} // ✅ Устанавливаем флаг при начале драга
+                    onMouseUp={handleObjectUpdateEnd}
+                />
+            )}
+        </>
+    );
 }
 
 function ClickOutsideHandle() {
@@ -330,9 +346,6 @@ export function Scene_GB() {
     const addToSelection = useSceneStore((state) => state.addToSelection);
     const clearSelection = useSceneStore((state) => state.clearSelection);
     const lastSaved = useSceneStore((state) => state.lastSaved);
-    const isOnline = useSceneStore((state) => state.online);
-    const setOnline = useSceneStore((state) => state.setOnline);
-    const currentSceneId = useSceneStore((state) => state.currentSceneId);
 
     const [marquee, setMarquee] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
@@ -348,39 +361,6 @@ export function Scene_GB() {
             setShowSavedIndicator(true);
         }
     }
-
-    useEffect(() => {
-        if (!isOnline || !currentSceneId) return;
-        
-        const unsubscribe = subscribeToSceneUpdates(currentSceneId, (update) => {
-            const doc = update.document;
-            const updateEvent = update.event;
-            if (!doc) return;
-            
-            try {
-                const sceneData = typeof doc.scene_data === 'string' 
-                    ? JSON.parse(doc.scene_data)
-                    : doc.scene_data;
-                const newObjects = Array.isArray(sceneData)
-                    ? sceneData
-                    : sceneData.objects || [];
-                    
-                if (updateEvent === 'create' || updateEvent === 'update') {
-                    useSceneStore.getState().setObjectsFromRealtime(newObjects);
-                }
-                if (updateEvent === 'delete') {
-                    useSceneStore.getState().setObjects([]);
-                }
-            } catch (err: unknown) {
-                console.error('Ошибка чтения realtime-обновления: '+ err);
-            }
-        });
-
-        return () => {
-            unsubscribe();
-            setOnline(false);
-        };
-    }, [currentSceneId, isOnline, setOnline]);
 
     useEffect(() => {
         if (!showSavedIndicator) return;

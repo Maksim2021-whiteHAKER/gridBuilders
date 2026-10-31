@@ -1,8 +1,23 @@
 // src/components/MarqueeSelection.tsx
 import { useCallback, useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
-import { useSceneStore } from "../store/sceneStore.js";
+import { useSceneStore, type SceneObject } from "../store/sceneStore.js";
 import { Vector3 } from 'three/src/math/Vector3.js'
+
+// ✅ Хелпер для получения мировых координат (учитывает смещение родителя)
+const getWorldPosition = (obj: SceneObject, allObjects: SceneObject[]): [number, number, number] => {
+    if (obj.parentId) {
+        const parent = allObjects.find(o => o.id === obj.parentId);
+        if (parent) {
+            return [
+                obj.position[0] + parent.position[0],
+                obj.position[1] + parent.position[1],
+                obj.position[2] + parent.position[2]
+            ];
+        }
+    }
+    return obj.position;
+};
 
 export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
         onMarqueeChange: (rect: {start: {x: number, y: number}, end: {x: number, y: number}} | null) => void;
@@ -14,7 +29,6 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
     const isSelectingRef = useRef(false);
     const startPosRef = useRef({x: 0, y: 0});
     const endPosRef = useRef({x: 0, y: 0});
-
     const isCtrlRef = useRef(false)
 
     const performSelection = useCallback(() => {
@@ -26,7 +40,9 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
         if (x2 - x1 >= 5 || y2 - y1 >= 5) {
             const newSelection: string[] = [];  
             objects.forEach((obj) => {
-                const vector = new Vector3(...obj.position);
+                // ✅ ИСПОЛЬЗУЕМ МИРОВЫЕ КООРДИНАТЫ для корректной проекции на экран
+                const worldPos = getWorldPosition(obj, objects);
+                const vector = new Vector3(...worldPos);
     
                 vector.project(camera);
                 const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
@@ -36,7 +52,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
                     newSelection.push(obj.id);
                 }
             });
-            onSelectionComplete(newSelection,isCtrlRef.current)
+            onSelectionComplete(newSelection, isCtrlRef.current)
         } else if (!isCtrlRef.current){
             onSelectionComplete([], false);
         }
@@ -81,7 +97,7 @@ export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {
             canvas.removeEventListener('pointermove', handlePointerMove);
             canvas.removeEventListener('pointerup', handlePointerUp);
         }
-    }, [gl, onMarqueeChange, onSelectionComplete, performSelection]);
+    }, [gl, onMarqueeChange, performSelection]);
 
     return null;
 }
