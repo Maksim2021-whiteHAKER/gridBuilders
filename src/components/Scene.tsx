@@ -10,7 +10,7 @@ import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { subscribeToSceneUpdates } from '../lib/realtime.ts'
-import { Mesh, Object3D, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
+import { Mesh, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
 import { useIsDesktop } from '../hooks/useDeviceType.ts'
 
 type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>
@@ -115,11 +115,11 @@ function ObjectMaterial({obj, isSelected } : {obj: SceneObject, isSelected:boole
 }
 
 function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:boolean, setMesh: (mesh: Mesh | null) => void}){
-    const { selectObject, addToSelection, objects } = useSceneStore();
+    const { selectObject, addToSelection, objects, interactionMode } = useSceneStore();
 
     const handleObjectClick = (e: React.MouseEvent<HTMLElement>) => {
         e.stopPropagation();
-        const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
+        const isCtrlOrCmd = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey || interactionMode === 'select';
         
         // ✅ ЛОГИКА ГРУПП: Если у объекта есть родитель (он в группе) или это сама группа
         if (obj.parentId || obj.type === 'model') {
@@ -204,7 +204,6 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
     }, [obj.position, obj.rotation, obj.scale, isTransforming, obj.type]);
 
     const handleObjectUpdateEnd = () => {
-        // ✅ Чтение .current ЗДЕСЬ разрешено, так как это обработчик события, а не рендер!
         if (obj.type === 'model' && groupRef.current) {
             updateObj(obj.id, {
                 position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
@@ -229,7 +228,8 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
     if (obj.type === 'model') {
         const children = allObjects.filter(child => child.parentId === obj.id);
 
-        return (
+        // Создаем контент группы отдельно
+        const groupContent = (
             <group 
                 ref={groupRef} 
                 position={obj.position} 
@@ -243,36 +243,37 @@ function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolea
                         isSelected={selectedIds.includes(child.id)} 
                     />
                 ))}
-                
-                {/* ✅ ИСПРАВЛЕНИЕ: Безопасное приведение типа для удовлетворения строгого TS */}
-                {isSelected && (
-                    <TransformControls 
-                        object={groupRef as unknown as React.RefObject<Object3D>}
-                        mode={transformMode}
-                        onMouseDown={() => setIsTransforming(true)}
-                        onMouseUp={handleObjectUpdateEnd}
-                    />
-                )}
             </group>
         );
+
+        // ✅ ПАТТЕРН ОБЕРТКИ: Если выделено, оборачиваем в TransformControls. 
+        // Это на 100% решает ошибку "not in scene graph" и убирает необходимость читать ref.current при рендере!
+        return isSelected ? (
+            <TransformControls 
+                mode={transformMode}
+                onMouseDown={() => setIsTransforming(true)}
+                onMouseUp={handleObjectUpdateEnd}
+            >
+                {groupContent}
+            </TransformControls>
+        ) : groupContent;
     }
 
     // 🌟 2. Если это ОБЫЧНЫЙ объект
-    return (
-        <>
-            <CreateObject obj={obj} isSelected={isSelected} setMesh={(mesh) => { meshRef.current = mesh; }} />
-            
-            {/* ✅ ИСПРАВЛЕНИЕ: Безопасное приведение типа для удовлетворения строгого TS */}
-            {isSelected && (
-                <TransformControls 
-                    object={meshRef as unknown as React.RefObject<Object3D>}
-                    mode={transformMode} 
-                    onMouseDown={() => setIsTransforming(true)}
-                    onMouseUp={handleObjectUpdateEnd}
-                />
-            )}
-        </>
+    const meshContent = (
+        <CreateObject obj={obj} isSelected={isSelected} setMesh={(mesh) => { meshRef.current = mesh; }} />
     );
+
+    // ✅ ТОТ ЖЕ ПАТТЕРН ОБЕРТКИ для обычных объектов
+    return isSelected ? (
+        <TransformControls 
+            mode={transformMode} 
+            onMouseDown={() => setIsTransforming(true)}
+            onMouseUp={handleObjectUpdateEnd}
+        >
+            {meshContent}
+        </TransformControls>
+    ) : meshContent;
 }
 
 function ClickOutsideHandle() {

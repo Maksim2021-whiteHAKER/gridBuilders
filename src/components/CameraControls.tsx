@@ -109,7 +109,7 @@ export function CameraControls() {
             background: 'rgba(20, 21, 31, 0.98)',
             borderRadius: 12,
             border: '1px solid #2e303a',
-            zIndex: 999,
+            zIndex: 99999,
             boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
             overflow: 'hidden',
             transition: 'max-height 0.3s ease'

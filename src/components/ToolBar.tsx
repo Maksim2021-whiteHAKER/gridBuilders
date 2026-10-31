@@ -81,7 +81,8 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     const isSmall = deviceType === 'mobile' || deviceType === 'tablet';
     const groupSelected = useSceneStore(s => s.groupSelected);
     const ungroupSelected = useSceneStore(s => s.ungroupSelected);
-  
+
+    const setInteractionMode = useSceneStore((state) => state.setInteractionMode);  
     const objects = useSceneStore(s => s.objects);    
     // Находим первый выбранный объект
     const firstSelectedObject = objects.find(o => o.id === selectedIds[0]);
@@ -96,6 +97,8 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
     const [showExportModal, setShowExportModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showSupport, setShowSupport] = useState(false);
+    // ✅ Читаем режим напрямую из глобального состояния
+    const interactionMode = useSceneStore((state) => state.interactionMode);
 
     const handleAddObject = () => {
         const newObject = {
@@ -131,6 +134,20 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     zIndex: 1000, display: 'flex', flexDirection: deviceType === 'tablet' ? 'row' : 'column',
                     gap: deviceType === 'tablet' ? 16 : 8, justifyContent: "space-between"
                 }}>
+                <div style={{ position: 'absolute', top: '-220%', display: 'flex', gap: 8, alignItems: 'center', marginBottom: deviceType === 'mobile' ? 8 : 0, zIndex: 998 }}>
+                    <select
+                        value={interactionMode}
+                        onChange={(e) => setInteractionMode(e.target.value as 'create' | 'select')}
+                        style={{
+                            flex: 1, padding: '10px', background: '#14151f', color: 'white',
+                            border: '1px solid #2e303a', borderRadius: 8, fontSize: 14, fontWeight: 600, zIndex: 900
+                        }}
+                    >
+                        <option value='create'>🌄 Режим: Создание</option>
+                        <option value='select'>🔲 Режим: Выделение</option>
+                    </select>
+                </div>
+                    { interactionMode === 'create' && (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
                             style={{
@@ -150,6 +167,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                             }}>Добавить
                         </button>
                     </div>
+                    )}
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', gap: 4, flex: 1 }}>
                             {(['translate', 'rotate', 'scale'] as const).map((mode) => (
@@ -183,7 +201,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         </button>
                     </div>
                 </div>
-                <button onClick={() => setIsExpanded(!isExpanded)}
+                <button onClick={() => { setIsExpanded(!isExpanded);  if (!isExpanded) { setIsExpandedAutorized(false); }}}
                     style={{
                         position: 'fixed', bottom: 85, right: 12, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
                         border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
@@ -191,7 +209,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                     }}>
                     {isExpanded ? '✕' : '⚙️'}
-                </button>
+                </button>                
                 {isExpanded && (
                     <div style={{
                         position: 'fixed', bottom: 85, right: 122, width: 200, background: 'rgba(20, 21, 31, 0.98)',
@@ -232,7 +250,7 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                         </div>
                     </div>                   
                 )}
-                <button onClick={() => setIsExpandedAutorized(!isExpandedAutorized)}
+                <button onClick={() => { setIsExpandedAutorized(!isExpandedAutorized);  if (!isExpandedAutorized) { setIsExpanded(false); }}}
                     style={{
                         position: 'fixed', bottom: 85, right: 70, height: 48, width: 48, background: 'rgba(20, 21, 31, 0.95)',
                         border: '1px solid #2e303a', borderRadius: '50%', color: 'white', fontSize: 20, cursor: 'pointer',
@@ -307,24 +325,38 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
             gap: 12,
             minWidth: 250
         }}>
-            <label style={{ color: 'rgb(255, 255, 255)', fontSize: 13, fontWeight: 200 }}>Тип объекта</label>
-            
-            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
-            style={{
-                padding: '8px 12px', background: '#14151f', color: 'rgb(255, 255, 255)',
-                border: '1px solid rgba(255, 255, 210, 0.8)', borderRadius: 4, cursor: 'pointer', fontSize: 14
+            <select
+                value={interactionMode}
+                onChange={(e) => setInteractionMode(e.target.value as 'create' | 'select')}
+                style={{
+                flex: 1, padding: '10px', background: '#14151f', color: 'white',
+                border: '1px solid #2e303a', borderRadius: 8, fontSize: 14, fontWeight: 600, zIndex: 900
             }}>
-                {OBJECT_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>{type.name}</option>
-                ))}
+                <option value='create'>🌄 Режим: Создание</option>
+                <option value='select'>🔲 Режим: Выделение</option>                    
             </select>
+            
+            { interactionMode === 'create' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ color: 'rgb(255, 255, 255)', fontSize: 13, fontWeight: 200 }}>Тип объекта</label>
+                
+                <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as ObjectType)}
+                style={{
+                    padding: '8px 12px', background: '#14151f', color: 'rgb(255, 255, 255)',
+                    border: '1px solid rgba(255, 255, 210, 0.8)', borderRadius: 4, cursor: 'pointer', fontSize: 14
+                }}>
+                    {OBJECT_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>{type.name}</option>
+                    ))}
+                </select>
 
-            <button onClick={handleAddObject} style={{
-                padding: '8px 16px', background: 'var(--accent, #aa3bff)', color: 'white',
-                border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500
-            }}>
-                Добавить Объект
-            </button>
+                <button onClick={handleAddObject} style={{
+                    padding: '8px 16px', background: 'var(--accent, #aa3bff)', color: 'white',
+                    border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500
+                }}>
+                    Добавить Объект
+                </button>
+            </div>)}
 
             {/* Undo/Redo и Сброс камеры */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -398,6 +430,8 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                     </div>
                 </>
             )}
+
+            {/* --------- */}
 
             <div style={{marginTop: 8, paddingTop: 12, borderTop: '1px solid #2e303a', display: 'flex', flexDirection: 'column', gap: 6}}>
                 <label style={{color: 'white', fontSize: 12, fontWeight: 200}}>Сохранение / загрузка</label>

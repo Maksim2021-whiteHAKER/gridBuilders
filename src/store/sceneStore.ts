@@ -129,6 +129,9 @@ interface SceneStore extends SceneState {
 
     groupSelected: () => void,
     ungroupSelected: () => void,
+
+    interactionMode: 'create' | 'select';
+    setInteractionMode: (mode: 'create' | 'select') => void;
 }
 
 const loadInitialState = (): Partial<SceneState> => {
@@ -262,6 +265,9 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 future: []
             });
         },
+
+        interactionMode: 'create',
+        setInteractionMode: (mode) => set({ interactionMode: mode }),
 
         setObjectsFromRealtime: (newObjects: SceneObject[]) => {
             const state = get()
