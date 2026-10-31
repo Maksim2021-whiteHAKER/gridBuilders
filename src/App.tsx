@@ -8,7 +8,7 @@ import { CameraControls } from './components/CameraControls.tsx';
 import { useAuthStore } from './store/authStore.ts';
 import { FullscreenOrientation } from './components/FullscreenOrientation.tsx';
 import { getPublicScene, loadScene, makeRoomShared } from './lib/appwrite';
-import { useSceneStore } from './store/sceneStore.ts';
+import { debouncedSaveToLocalStorage, useSceneStore } from './store/sceneStore.ts';
 import { lazy, Suspense } from 'react';
 import { WebGLGuard } from './components/WebGLGuard.tsx';
 import { SceneErrorBoundary } from './components/SceneErrorBoundary.tsx';
@@ -142,6 +142,25 @@ function App() {
 
     useEffect(() => {
         document.getElementById('boot-loader')?.remove()
+    }, []);
+
+    useEffect(() => {
+        const handleSaveOnExit = () => {
+            // Немедленно сохраняем текущее состояние, игнорируя задержку debounce
+            debouncedSaveToLocalStorage.flush(useSceneStore.getState());
+        };
+
+        window.addEventListener('beforeunload', handleSaveOnExit);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                handleSaveOnExit();
+            }
+        });
+
+        return () => {
+            window.removeEventListener('beforeunload', handleSaveOnExit);
+            document.removeEventListener('visibilitychange', handleSaveOnExit);
+        };
     }, []);
 
     if (isLoading && !isReadOnly) {

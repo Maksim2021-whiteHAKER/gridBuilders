@@ -17,21 +17,34 @@ const mySessionId = generatedId()
 
 export type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text' | 'model'
 
-// ✅ 100% типобезопасный debounce без 'any' и без конфликтов возвращаемых типов
+type DebouncedFn<TArgs extends unknown[]> = ((...args: TArgs) => void) & {
+    flush: (...args: TArgs) => void;
+};
+
+// ✅ 2. 100% типобезопасный debounce с поддержкой flush (без 'any')
 function debounce<TArgs extends unknown[]>(
     fn: (...args: TArgs) => unknown,
     delay: number
-): (...args: TArgs) => void {
+): DebouncedFn<TArgs> {
     let timer: ReturnType<typeof setTimeout>;
-    return (...args: TArgs) => {
+    const debouncedFn = (...args: TArgs) => {
         clearTimeout(timer);
         timer = setTimeout(() => {
             fn(...args);
         }, delay);
     };
+    
+    // Метод для немедленного выполнения и очистки таймера
+    debouncedFn.flush = (...args: TArgs) => {
+        clearTimeout(timer);
+        fn(...args);
+    };
+    
+    return debouncedFn as DebouncedFn<TArgs>;
 }
 
-const debouncedSaveToLocalStorage = debounce((state: SceneStore) => {
+// ✅ 3. Экспортируем и добавляем обновление lastSaved
+export const debouncedSaveToLocalStorage = debounce((state: SceneStore) => {
     const sceneData = {
         objects: state.objects,
         transformMode: state.transformMode,
@@ -41,10 +54,12 @@ const debouncedSaveToLocalStorage = debounce((state: SceneStore) => {
     };
     try {
         localStorage.setItem('gridbuilders_scene', JSON.stringify(sceneData));
+        // ✅ FIX: Обновляем lastSaved, чтобы сработал индикатор "Автосохранение"
+        useSceneStore.setState({ lastSaved: Date.now() });
     } catch (e) {
         console.error("Провал сохранения в Локальное хранилище: " + e);
     }
-}, 1000); // Сохраняем не чаще 1 раза в секунду
+}, 1000);
 
 export interface SceneObject {
     id: string,
