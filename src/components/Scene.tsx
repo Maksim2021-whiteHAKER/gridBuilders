@@ -1,5 +1,5 @@
 // /src/components/Scene.tsx
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsDrei, Grid, Line, TransformControls, Outlines, Text as Text3D } from '@react-three/drei'
 import { COLORS } from '../constants/color.ts'
@@ -10,7 +10,7 @@ import { MarqueeSelection } from './MarqueeSelection.tsx'
 import { createGradientTexture } from '../utils/createGradientTexture.ts'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { subscribeToSceneUpdates } from '../lib/realtime.ts'
-import { Mesh, Vector2, Texture, TextureLoader, Raycaster } from 'three'
+import { Mesh, Vector2, Texture, TextureLoader, Raycaster, Group } from 'three'
 import { useIsDesktop } from '../hooks/useDeviceType.ts'
 
 type TextureUrlParams = Pick<SceneObject, 'useGradient' | 'gradientColors' | 'gradientType' | 'gradientAngle' | 'textureUrl'>
@@ -68,7 +68,7 @@ function TexturedMaterial({obj, isSelected, textureUrl} : {obj: SceneObject, isS
                 depthWrite={obj.opacity === 1}
                 alphaTest={obj.opacity < 1 ? 0.01 : 0}
             />
-            { isSelected && <Outlines color="#aa3bff" thickness={2} angle={0.6} />}
+            { isSelected && obj.type !== 'model' &&(<Outlines color="#aa3bff" thickness={2} angle={0.6} />)}
         </>
     )
 }
@@ -84,7 +84,7 @@ function PlainMaterial({obj, isSelected}: {obj: SceneObject, isSelected: boolean
                 depthWrite={obj.opacity === 1}
                 alphaTest={obj.opacity < 1 ? 0.01 : 0}
             />
-            {isSelected && <Outlines color="#aa3bff" thickness={2} angle={0.6} />}
+            {isSelected && obj.type !== 'model' &&(<Outlines color="#aa3bff" thickness={2} angle={0.6} />)}
         </>
     )
 }
@@ -154,43 +154,108 @@ function CreateObject({obj, isSelected, setMesh}:{obj: SceneObject, isSelected:b
     )
 }
 
-function SceneObject({obj, isSelected}:{obj: SceneObject, isSelected:boolean}){
-    const [mesh, setMesh] = useState<Mesh | null>(null);
-    const { updateObj, transformMode, selectedIds, snapEnabled, gridSize } = useSceneStore();
+function SceneObject({ obj, isSelected }: { obj: SceneObject, isSelected: boolean }) {
+    const { updateObj, transformMode, snapEnabled, gridSize } = useSceneStore();
+    
+    // ✅ ИСПРАВЛЕНИЕ: Подписываемся на изменения объектов, чтобы дети обновлялись реактивно
+    const allObjects = useSceneStore(state => state.objects);
+    const selectedIds = useSceneStore(state => state.selectedIds);
+    
     const [isTransforming, setIsTransforming] = useState(false);
+    
+    // Рефы для обоих типов объектов
+    const groupRef = useRef<Group>(null);
+    const meshRef = useRef<Mesh>(null);
 
+    // Синхронизация для обычных объектов (Mesh)
     useEffect(() => {
-        if (mesh && !isTransforming ) {
-            mesh.position.set(obj.position[0], obj.position[1], obj.position[2]);
-            mesh.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
-            mesh.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
+        if (meshRef.current && !isTransforming && obj.type !== 'model') {
+            meshRef.current.position.set(obj.position[0], obj.position[1], obj.position[2]);
+            meshRef.current.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
+            meshRef.current.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
         }
-    }, [obj.position, obj.rotation, obj.scale, isTransforming, mesh]);
+    }, [obj.position, obj.rotation, obj.scale, isTransforming]);
+
+    // Синхронизация для групп (Group)
+    useEffect(() => {
+        if (groupRef.current && !isTransforming && obj.type === 'model') {
+            groupRef.current.position.set(obj.position[0], obj.position[1], obj.position[2]);
+            groupRef.current.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
+            groupRef.current.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
+        }
+    }, [obj.position, obj.rotation, obj.scale, isTransforming]);
 
     const handleObjectUpdateEnd = () => {
-        if (mesh){
+        if (obj.type === 'model' && groupRef.current) {
+            // Сохраняем трансформации самой группы
             updateObj(obj.id, {
-                position: [snapEnabled ? Math.round(mesh.position.x / gridSize) * gridSize : mesh.position.x, snapEnabled ? Math.round(mesh.position.y / gridSize) * gridSize : mesh.position.y, snapEnabled ? Math.round(mesh.position.z / gridSize) * gridSize : mesh.position.z],
-                rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z],
-                scale: [mesh.scale.x, mesh.scale.y, mesh.scale.z]
-            })
+                position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
+                rotation: [groupRef.current.rotation.x, groupRef.current.rotation.y, groupRef.current.rotation.z],
+                scale: [groupRef.current.scale.x, groupRef.current.scale.y, groupRef.current.scale.z]
+            });
+        } else if (meshRef.current) {
+            // Сохраняем трансформации обычного объекта
+            updateObj(obj.id, {
+                position: [
+                    snapEnabled ? Math.round(meshRef.current.position.x / gridSize) * gridSize : meshRef.current.position.x,
+                    snapEnabled ? Math.round(meshRef.current.position.y / gridSize) * gridSize : meshRef.current.position.y,
+                    snapEnabled ? Math.round(meshRef.current.position.z / gridSize) * gridSize : meshRef.current.position.z
+                ],
+                rotation: [meshRef.current.rotation.x, meshRef.current.rotation.y, meshRef.current.rotation.z],
+                scale: [meshRef.current.scale.x, meshRef.current.scale.y, meshRef.current.scale.z]
+            });
         }
-        setIsTransforming(false)
+        setIsTransforming(false);
+    };
+
+    // 🌟 1. Если это ГРУППА (model)
+    if (obj.type === 'model') {
+        // ✅ ИСПРАВЛЕНИЕ: Используем allObjects из хука, а не getState()
+        const children = allObjects.filter(child => child.parentId === obj.id);
+
+        return (
+            <group 
+                ref={groupRef} 
+                position={obj.position} 
+                rotation={obj.rotation} 
+                scale={obj.scale}
+            >
+                {/* Рекурсивно рендерим детей ВНУТРИ группы */}
+                {children.map(child => (
+                    <SceneObject 
+                        key={child.id} 
+                        obj={child} 
+                        isSelected={selectedIds.includes(child.id)} 
+                    />
+                ))}
+                
+                {/* TransformControls вешаем на саму группу */}
+                {isSelected && groupRef.current && (
+                    <TransformControls 
+                        object={groupRef.current}
+                        mode={transformMode}
+                        onMouseDown={() => setIsTransforming(true)}
+                        onMouseUp={handleObjectUpdateEnd}
+                    />
+                )}
+            </group>
+        );
     }
 
-    return(
+    // 🌟 2. Если это ОБЫЧНЫЙ объект
+    return (
         <>
-            <CreateObject obj={obj} isSelected={isSelected} setMesh={setMesh} />
-            { selectedIds.length === 1 && isSelected && mesh && (
+            <CreateObject obj={obj} isSelected={isSelected} setMesh={(mesh) => { meshRef.current = mesh; }} />
+            {selectedIds.length === 1 && isSelected && meshRef.current && (
                 <TransformControls 
-                    object={mesh}
+                    object={meshRef.current}
                     mode={transformMode} 
                     onMouseDown={() => setIsTransforming(true)}
                     onMouseUp={handleObjectUpdateEnd}
                 />
-            ) }
+            )}
         </>
-    )
+    );
 }
 
 function ClickOutsideHandle() {
@@ -358,9 +423,14 @@ export function Scene_GB() {
                 <Line points={[[0, -100, 0], [0, 100, 0]]} color={COLORS.axisY} lineWidth={3} opacity={0.4} transparent/>
                 <Line points={[[0, 0, -100], [0, 0, 100]]} color={COLORS.axisZ} lineWidth={3} opacity={0.4} transparent/>
 
-                {objects.map((obj) => (
-                    <SceneObject key={obj.id} obj={obj} isSelected={selectedIds.includes(obj.id)}/>
-                ))}
+                {/* 🌟 3. КРИТИЧЕСКИ ВАЖНО: Пропускаем рендеринг детей на верхнем уровне! */}
+                {objects.map((obj) => {
+                    if (obj.parentId) return null; // Они отрендерятся внутри своего parent <group>
+
+                    return (
+                        <SceneObject key={obj.id} obj={obj} isSelected={selectedIds.includes(obj.id)}/>
+                    );
+                })}
 
                 {selectedIds.length > 1 && (
                     <GroupTransformControls 

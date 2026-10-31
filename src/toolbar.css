@@ -1,0 +1,9 @@
+.btn-control-main {
+    flex: 1; 
+    padding: 6px 8px;
+    color: white; 
+    border: 1px solid #2e303a; 
+    border-radius: 4; 
+    cursor: pointer;
+    font-size: 12;
+}

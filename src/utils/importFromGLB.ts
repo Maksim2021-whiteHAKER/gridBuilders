@@ -1,7 +1,7 @@
 // src/utils/importFromGLB.ts
 import { GLTFLoader } from 'three/examples/jsm/Addons.js'
-import type { SceneObject } from '../store/sceneStore'
-import { generatedId } from './generatedId';
+import type { SceneObject } from '../store/sceneStore.js'
+import { generatedId } from './generated.js';
 import { Mesh } from 'three/src/objects/Mesh.js'
 import { MeshStandardMaterial } from 'three';
 

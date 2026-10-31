@@ -4,7 +4,7 @@ import { useSceneStore } from "../store/sceneStore";
 import { useDeviceType } from '../hooks/useDeviceType';
 import { ExportImportModal } from './modals/ExportImportModal';
 import type { Models } from 'appwrite';
-import { generatedId } from '../utils/generatedId';
+import { generatedId } from '../utils/generated.js';
 import { APPWRITE_READY } from '../lib/appwrite';
 
 const SupportModal = lazy(() => import('./modals/SupportModal').then(module => ({default: module.SupportModal})))
@@ -79,6 +79,18 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
 
     const deviceType = useDeviceType();
     const isSmall = deviceType === 'mobile' || deviceType === 'tablet';
+    const groupSelected = useSceneStore(s => s.groupSelected);
+    const ungroupSelected = useSceneStore(s => s.ungroupSelected);
+  
+    const objects = useSceneStore(s => s.objects);    
+    // Находим первый выбранный объект
+    const firstSelectedObject = objects.find(o => o.id === selectedIds[0]);
+    // Группа ли это ИЛИ объект внутри группы?
+    const isGroup = firstSelectedObject?.type === 'model';
+    const hasParent = firstSelectedObject?.parentId !== undefined;
+    // Показываем кнопку Ungroup, если это группа или часть группы
+
+    const showUngroup = isGroup || hasParent;
     const [isExpanded, setIsExpanded] = useState(false);
     const [isExpandedAutorized, setIsExpandedAutorized] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
@@ -150,6 +162,44 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                                     {mode === 'translate' ? '↕️' : mode === 'rotate' ? '🔄' : '⤢'}
                                 </button>
                             ))}
+                            {/* Если что-то выбрано, показываем кнопку Группировки или Разгруппировки */}
+                            {selectedIds.length > 0 && (
+                            showUngroup ? (
+                                // Показываем кнопку Ungroup
+                                <button 
+                                    key="ungroup" 
+                                    className="btn-control-main" 
+                                    onClick={ungroupSelected} 
+                                    title="Ungroup (Ctrl+Shift+G)"
+                                    style={{
+                                        flex: 1, padding: '10px 4px', background: '#14151f',
+                                        color: 'white', border: '1px solid #2e303a', borderRadius: 6,
+                                        fontSize: deviceType === 'tablet' ? 16 : 12, minHeight: 40, minWidth: 75
+                                    }}
+                                >
+                                    ✂️ Ungroup
+                                </button>
+                            ) : (
+                                // Показываем кнопку Group
+                                <button 
+                                    key="group" 
+                                    className="btn-control-main" 
+                                    onClick={groupSelected} 
+                                    disabled={selectedIds.length < 2} 
+                                    title="Group as Object (Ctrl+G)"
+                                    style={{
+                                        flex: 1, padding: '10px 4px', 
+                                        background: selectedIds.length >= 2 ? '#aa3bff' : '#0a0b15',
+                                        color: selectedIds.length >= 2 ? 'white' : '#6d7280', 
+                                        border: '1px solid #2e303a', borderRadius: 6,
+                                        fontSize: deviceType === 'tablet' ? 16 : 12, minHeight: 40, minWidth: 75,
+                                        cursor: selectedIds.length >= 2 ? 'pointer' : 'not-allowed'
+                                    }}
+                                >
+                                    🔗 Group ({selectedIds.length})
+                                </button>
+                            )
+                        )}
                         </div>
                         <button onClick={() => setShowExportModal(true)}
                             style={{
@@ -354,18 +404,21 @@ export function ToolBar({onAuthClick, user, onSignOut, onOpenProjects}: {
                 <>
                     <label style={{ color: 'rgb(255,255,255)', fontSize: 13, fontWeight: 200, marginTop: 8 }}>Тип управления</label>
                     <div style={{ display: 'flex', gap: 4 }}>
-                        <button onClick={() => setTransformMode('translate')} style={{
-                            flex: 1, padding: '6px 8px', background: transformMode === 'translate' ? '#aa3bff' : '#14151f',
-                            color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12
+                        <button className="btn-control-main" onClick={() => setTransformMode('translate')} style={{
+                            background: transformMode === 'translate' ? '#aa3bff' : '#14151f',
                         }}>↕️ W</button>
-                        <button onClick={() => setTransformMode('rotate')} style={{
-                            flex: 1, padding: '6px 8px', background: transformMode === 'rotate' ? '#aa3bff' : '#14151f',
-                            color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12
+                        <button className="btn-control-main" onClick={() => setTransformMode('rotate')} style={{
+                            background: transformMode === 'rotate' ? '#aa3bff' : '#14151f',
                         }}>🔄 R</button>
-                        <button onClick={() => setTransformMode('scale')} style={{
-                            flex: 1, padding: '6px 8px', background: transformMode === 'scale' ? '#aa3bff' : '#14151f',
-                            color: 'white', border: '1px solid #2e303a', borderRadius: 4, cursor: 'pointer', fontSize: 12
+                        <button className="btn-control-main" onClick={() => setTransformMode('scale')} style={{
+                            background: transformMode === 'scale' ? '#aa3bff' : '#14151f',
                         }}>⤢ S</button>
+                        <button className="btn-control-main" onClick={groupSelected} disabled={selectedIds.length < 2} title="Group as Object (Ctrl+G)">
+                            🔗 Group ({selectedIds.length})
+                        </button>
+                        <button className="btn-control-main" onClick={ungroupSelected} disabled={!isGroup} title="Ungroup (Ctrl+Shift+G)">
+                            ✂️ Ungroup
+                        </button>        
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, padding: '8px 12px', background: '#14151f', borderRadius: 4, border: '1px solid #2e303a' }}>

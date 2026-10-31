@@ -10,9 +10,12 @@ import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import { updateSceneData } from "../lib/appwrite";
 import { useAuthStore } from "./authStore";
 import { subscribeToSceneUpdates } from "../lib/realtime";
-import { generatedId } from "../utils/generatedId";
+import { generatedId } from "../utils/generated";
+import { createGroupFromSelection, ungroupObject } from "../utils/groupUtils";
 
 const mySessionId = generatedId()
+
+export type ObjectType = 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text' | 'model'
 
 function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
     let timer: ReturnType<typeof setTimeout>;
@@ -24,7 +27,7 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number):
 
 export interface SceneObject {
     id: string,
-    type: 'box' | 'sphere' | 'cylinder' | 'cone' | 'tor' | 'pyramid' | 'text',
+    type: ObjectType,
     position: [number, number, number],
     rotation: [number, number, number],
     scale: [number, number, number],
@@ -47,6 +50,10 @@ export interface SceneObject {
 
     deleted?: boolean,
     deletedAt?: number,
+
+    children?: string[],
+    parentId?: string,
+    nameGroup?: string
 }
 
 type TransformMode = 'translate' | 'rotate' | 'scale'
@@ -120,6 +127,8 @@ interface SceneStore extends SceneState {
     startCollab: (sceneId: string) => void;
     stopCollab: () => void;
 
+    groupSelected: () => void,
+    ungroupSelected: () => void,
 }
 
 const loadInitialState = (): Partial<SceneState> => {
@@ -194,6 +203,63 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         setCurrentSceneId: (id: string | null) => set({currentSceneId: id}),
 
         pushToCloud,
+
+        groupSelected: () => {
+            const state = get();
+            if (state.selectedIds.length < 2) {
+                console.warn(`должно быть выбрано как минимум два объекта`)
+                return;
+            }
+
+            const hasParent = state.selectedIds.some(id => {
+                const obj = state.objects.find(o => o.id === id);
+                return obj?.parentId !== undefined;
+            });
+
+            if (hasParent) {
+                console.warn('Нельзя группировать объекты, уже входящие в группу');
+                return;
+            }
+
+            const { newObjects, groupId} = createGroupFromSelection(state.objects, state.selectedIds);
+
+            set({objects: newObjects, selectedIds: [groupId]});
+        },
+        
+        ungroupSelected: () => {
+            const state = get();
+            
+            // 1. Сначала ищем, не выбрана ли сама группа
+            let selectedGroup = state.objects.find(
+                obj => obj.id === state.selectedIds[0] && obj.type === 'model'
+            );
+        
+            // 2. Если нет, проверяем, не является ли выбранный объект частью группы
+            if (!selectedGroup && state.selectedIds.length > 0) {
+                const firstSelectedObj = state.objects.find(o => o.id === state.selectedIds[0]);
+                if (firstSelectedObj?.parentId) {
+                    // Находим родительскую группу по ID
+                    selectedGroup = state.objects.find(o => o.id === firstSelectedObj.parentId);
+                }
+            }
+        
+            if (!selectedGroup || selectedGroup.type !== 'model' || !selectedGroup.children) {
+                console.warn('Выберите группу или объект внутри группы для разгруппировки');
+                return;
+            }
+        
+            const newObjects = ungroupObject(state.objects, selectedGroup.id);
+            const newSelectedIds = selectedGroup.children || [];
+        
+            // ✅ Используем set с явным указанием всех полей
+            set({ 
+                objects: newObjects, 
+                selectedIds: newSelectedIds,
+                // ✅ Очищаем past/future, чтобы избежать конфликтов истории
+                past: [],
+                future: []
+            });
+        },
 
         setObjectsFromRealtime: (newObjects: SceneObject[]) => {
             const state = get()

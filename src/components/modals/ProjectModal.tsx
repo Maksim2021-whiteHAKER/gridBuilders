@@ -1,9 +1,9 @@
 // // src/components/modals/ProjectModal.tsx
 import { useState, useEffect } from "react";
-import { useAuthStore } from "../../store/authStore";
-import { useSceneStore } from "../../store/sceneStore";
-import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../../lib/appwrite";
-import type { SceneListItem } from "../../typesAppwrite";
+import { useAuthStore } from "../../store/authStore.js";
+import { useSceneStore } from "../../store/sceneStore.js";
+import { loadScene, saveScene, deleteScene, loadScenes, renameScene, toggleScenePublic } from "../../lib/appwrite.js";
+import type { SceneListItem } from "../../typesAppwrite.js";
 
 interface ProjectModalProps {
     onClose: () => void;

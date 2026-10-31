@@ -1,9 +1,9 @@
 // /scr/components/PropertiesPanel.tsx
 import { useState } from 'react';
-import { useSceneStore, type SceneObject } from '../store/sceneStore'
-import { useDeviceType } from '../hooks/useDeviceType';
-import { GradientPicker } from './GradientPicker';
-import { createGradientPreview } from '../utils/createGradientTexture';
+import { useSceneStore, type SceneObject } from '../store/sceneStore.js'
+import { useDeviceType } from '../hooks/useDeviceType.js';
+import { GradientPicker } from './GradientPicker.js';
+import { createGradientPreview } from '../utils/createGradientTexture.js';
 import '../PropertiesPanel.css' // расположение src\PropertiesPanel.css
 
 const isValidNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);

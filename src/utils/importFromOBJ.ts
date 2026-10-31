@@ -1,7 +1,7 @@
 // src/utils/importFromOBJ.ts
 import { OBJLoader } from 'three/examples/jsm/Addons.js'
-import type { SceneObject } from '../store/sceneStore'
-import { generatedId } from './generatedId';
+import type { SceneObject } from '../store/sceneStore.js'
+import { generatedId } from './generated.js';
 import { Group } from 'three/src/objects/Group.js';
 import { Mesh} from 'three/src/objects/Mesh.js'
 

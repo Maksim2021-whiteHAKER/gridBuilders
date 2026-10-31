@@ -1,7 +1,7 @@
 // src/components/MarqueeSelection.tsx
 import { useCallback, useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
-import { useSceneStore } from "../store/sceneStore";
+import { useSceneStore } from "../store/sceneStore.js";
 import { Vector3 } from 'three/src/math/Vector3.js'
 
 export function MarqueeSelection({ onMarqueeChange, onSelectionComplete } : {

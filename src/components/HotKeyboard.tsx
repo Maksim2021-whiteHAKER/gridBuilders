@@ -1,12 +1,15 @@
 import { useEffect } from "react";
-import { useSceneStore } from "../store/sceneStore";
+import { useSceneStore } from "../store/sceneStore.js";
 import { useThree } from "@react-three/fiber";
 import { Vector3 } from 'three/src/math/Vector3.js'
-import { useDeviceType } from "../hooks/useDeviceType";
+import { useDeviceType } from "../hooks/useDeviceType.js";
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
-import { calculateCenter } from "../utils/calculateCenter";
+import { calculateCenter } from "../utils/calculateCenter.js";
 
 export function KeyboardShortcuts() {
+    const groupSelected = useSceneStore(s => s.groupSelected);
+    const ungroupSelected = useSceneStore(s => s.ungroupSelected);
+
     const controls = useThree((state) => state.controls) as unknown as {
         target: Vector3;
         update: () => void;
@@ -56,6 +59,9 @@ export function KeyboardShortcuts() {
 
             // 3. Хоткеи, требующие выделения
             if (selectedIds.length === 0) return;
+
+            if (ctrlOrCmd && !e.shiftKey && e.key === 'g') { e.preventDefault(); groupSelected() }
+            if (ctrlOrCmd && e.shiftKey && e.key === 'G') {e.preventDefault(); ungroupSelected() }
 
             switch (e.key.toLowerCase()) {
                 case 'delete':
