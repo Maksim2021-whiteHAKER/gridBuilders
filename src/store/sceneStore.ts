@@ -8,7 +8,6 @@ import { importFromOBJ as importOBJUtils } from "../utils/importFromOBJ";
 import { Camera, Object3D } from 'three'
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import { updateSceneData } from "../lib/appwrite";
-import { useAuthStore } from "./authStore";
 import { subscribeToSceneUpdates } from "../lib/realtime";
 import { generatedId } from "../utils/generated";
 import { createGroupFromSelection, ungroupObject } from "../utils/groupUtils";
@@ -207,8 +206,6 @@ function makePushToCloud(get: () => SceneStore) {
     return debounce(() => {
         const state = get();
         if (!state.currentSceneId || !state.online) return;
-        const user = useAuthStore.getState().user;
-        if (!user) return;
         const visibleObjects = state.objects.filter(o => !o.deleted);
         updateSceneData(state.currentSceneId, {objects: visibleObjects, savedBy: mySessionId})
             .catch((err: unknown) => {console.error("Сохранение в облако провалено: " + err)
@@ -270,6 +267,9 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 past: [...state.past.slice(-49), getCurrentState(state)],
                 future: []
             });
+
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud();
         },
         
         ungroupSelected: () => {
@@ -301,6 +301,9 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 past: [...state.past.slice(-49), getCurrentState(state)],
                 future: []
             });
+
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud();
         },
 
         interactionMode: 'create',
@@ -339,9 +342,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 }],
                 selectedIds: [obj.id]
             })
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         setObjects: (newObjects: SceneObject[]) => set({
@@ -368,9 +370,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                     )
                 })
             }
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         deleteObj: (id) => {
@@ -392,9 +393,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                     selectedIds: state.selectedIds.filter((sid) => sid !== id)
                 })
             }
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         restoreObj: (id) => {
@@ -406,9 +406,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                     o.id === id ? {...o, deleted: false, deletedAt: undefined} : o
                 )
             })
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         emptyTrash: () => {
@@ -418,9 +417,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 future: [],
                 objects: state.objects.filter(o => !o.deleted)
             })
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         selectObject: (id) => set({selectedIds: [id]}),
@@ -444,9 +442,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 objects: [],
                 selectedIds: []
             })
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         setTransformMode: (mode) => set({transformMode: mode}),
@@ -470,9 +467,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                     objects: [...state.objects, newObj],
                     selectedIds: [newObj.id]
                 })
-                if (get().online) {
-                    pushToCloud()                
-                } else get().saveToLocalStorage();
+                get().saveToLocalStorage();
+                if (get().online) pushToCloud()
             }
         },
 
@@ -486,16 +482,14 @@ export const useSceneStore = create<SceneStore>((set, get) => {
         toggleSnap() {
             const state = get();
             set({snapEnabled: !state.snapEnabled}) 
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         setGridSize: (size: number) => {
             set({gridSize: size})
-            if (get().online) {
-                pushToCloud()                
-            } else get().saveToLocalStorage();
+            get().saveToLocalStorage();
+            if (get().online) pushToCloud()
         },
 
         //сохран и загруз
@@ -575,8 +569,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                     snapEnabled: parsed.snapEnabled !== undefined ? parsed.snapEnabled : true,
                     gridSize: parsed.gridSize || 1.0,            
                 })
-                if (get().online) pushToCloud() 
-                    else get().saveToLocalStorage();
+                get().saveToLocalStorage();
+                if (get().online) pushToCloud()
                 return true;
             } catch (e) {
                 console.error("Провал JSON импорта: " + e);
@@ -594,8 +588,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                         objects: [...state.objects, ...objects],
                         selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
                     })
+                    get().saveToLocalStorage();
                     if (get().online) pushToCloud() 
-                        else get().saveToLocalStorage();
                     callback(true);
                 }, (error) => {
 
@@ -618,6 +612,7 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                         selectedIds: objects.length > 0 ? [objects[0].id] : [],                   
                     })
                     get().saveToLocalStorage();
+                    if (get().online) pushToCloud();
                     callback(true);
                 }, (error) => {
                     console.error(error);
@@ -639,8 +634,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 past: state.past.slice(0, -1),
                 future: [currentState, ...state.future]
             })
+            get().saveToLocalStorage();
             if (get().online) pushToCloud()
-                else get().saveToLocalStorage();
         },
 
         redo: () => {
@@ -655,8 +650,8 @@ export const useSceneStore = create<SceneStore>((set, get) => {
                 past: [...state.past, currentState],
                 future: state.future.slice(1)
             })
+            get().saveToLocalStorage();
             if (get().online) pushToCloud()
-                else get().saveToLocalStorage();
         },
 
         canUndo: () => get().past.length > 0,

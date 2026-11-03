@@ -1,5 +1,5 @@
 // /scr/components/PropertiesPanel.tsx
-import { useState } from 'react';
+import { useState, useEffect } from "react"
 import { useSceneStore, type SceneObject } from '../store/sceneStore.js'
 import { useDeviceType } from '../hooks/useDeviceType.js';
 import { GradientPicker } from './GradientPicker.js';
@@ -123,7 +123,19 @@ export function PropertiesPanel() {
 
     const [tempColor, setTempColor] = useState<string | null>(null)
     const [stepValue, setStepValue] = useState(10);
+
+    const [localText, setLocalText] = useState('');
+
     const AXIS_COLORS: [string, string, string] = ["#ff5f56", "#48ff73", "#1948ff"]
+
+    // Оставь только этот useEffect для синхронизации при клике на другой объект
+    useEffect(() => {
+        const firstObj = selectedObjects[0];
+        if (firstObj && firstObj.type === 'text') {
+            setLocalText(firstObj.text || '');
+        }
+        // Зависимость ТОЛЬКО от ID! Если текст изменится извне, мы это обработаем отдельно (или забьем)
+    }, [selectedObjects[0]?.id]); 
   
     if (selectedIds.length === 0) {
         if (isSmall) {
@@ -192,6 +204,15 @@ export function PropertiesPanel() {
         })
     }
 
+    // Добавь рядом с handleColorChange
+    const handleTextSave = () => {
+        selectedObjects.forEach((obj) => {
+            if (obj.type === 'text') {
+                updateObj(obj.id, { text: localText }, false); 
+            }
+        });
+    };
+
     const handleColorFinalChange = () => {
         const finalColor = tempColor ?? firstObj.color;
         selectedObjects.forEach((obj) => { 
@@ -218,7 +239,7 @@ export function PropertiesPanel() {
                 borderBottom: '1px solid #2e303a',
                 zIndex: 1000,
                 boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                maxHeight: deviceType === 'tablet' ? '160px' : '130px'
+                maxHeight: deviceType === 'tablet' ? '160px' : '135px'
             }}>
                 <div className='arrowIndicator' style={{left: 5 }}>⬅</div>
                 <div className='arrowIndicator' style={{right: 5 }}>➡</div>
@@ -243,65 +264,59 @@ export function PropertiesPanel() {
                     padding: deviceType === 'tablet' ? '16px 20px 24px 32px' : '5px 20px 1px 32px',
                 }}>
                     {/* Карточка: Позиция */}
-                    <div style={{ minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
-                        border: '1px solid #2e303a', scrollSnapAlign: 'start' }}>
                     {firstObj.type === 'text' && (
+                    <div className="containerProperty">
                         <>
                             <div>
                                 <label className="labelStyle-min">Содержимое текста (Enter для новой строки)</label>
-                                <textarea value={firstObj.text || ''} onChange={(e) => {
-                                    const val = e.target.value;
-                                    selectedObjects.forEach((obj) => {
-                                        if (obj.type === 'text') { updateObj(obj.id, { text: val }) };
-                                    });
-                                }} rows={4} className="input-style-min" placeholder="Введите текст...&#10;Enter = новая строка"/>
+                                <textarea value={localText} 
+                                    onChange={(e) => setLocalText(e.target.value) }
+                                    rows={4} className="input-style-min" placeholder="Введите текст...&#10;Enter = новая строка"/>
+                            <button onClick={handleTextSave} style={{ background: '#aa3bff', color: 'white', padding: '2px', margin: '1px 3px', borderRadius: '10px', fontWeight: 'bold', 
+                                fontSize: '15px'
+                            }}>
+                                ✉
+                            </button>
                             </div>
                             <div>
-                                <label className="labelStyle-min">Размер шрифта</label>
-                                <input className="input-style" type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
+                                <label className="labelStyle-min">Размер шрифта
+                                <input className="input-style-min-area" type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
                                     const value = parseFloat(e.target.value);
-                                    selectedObjects.forEach((obj) => {
-                                        if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
-                                    });
+                                    if (Number.isFinite(value)) {
+                                        selectedObjects.forEach((obj) => {
+                                            if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
+                                        });
+                                    }
                                 }}
                                     style={{ flex: 1, cursor: 'pointer' }}
                                 />
+                                </label>
                             </div>
                         </>
-                    )}
                     </div>
-                    <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
-                        border: '1px solid #2e303a', scrollSnapAlign: 'start'
-                    }}>
+                    )}
+                    <div className="containerProperty">
                         <AxisInput labelname="Позиция" values={firstObj.position} onChange={handlePositionChange}
                         colors={AXIS_COLORS} multi={isMultiObj}
                         />
                     </div>
 
                     {/* Карточка: Вращение */}
-                    <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
-                        border: '1px solid #2e303a', scrollSnapAlign: 'start'
-                    }}>
+                    <div className="containerProperty">
                         <AxisInput labelname="Вращение" values={firstObj.rotation} onChange={handleRotationChange}
                         colors={AXIS_COLORS} multi={isMultiObj}
                         />
                     </div>
 
                     {/* Карточка: Масштаб */}
-                    <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
-                        border: '1px solid #2e303a', scrollSnapAlign: 'start'
-                    }}>
+                    <div className="containerProperty">
                         <AxisInput labelname="Масштаб" values={firstObj.scale} onChange={handleScaleChange}
                         colors={AXIS_COLORS} multi={isMultiObj}
                         />
                     </div>
 
                     {/* Карточка: Цвет и Материалы */}
-                    <div style={{
-                        minWidth: firstObj.useGradient ? 480 : 380, background: '#14151f', borderRadius: 12, padding: 14,
+                    <div style={{ minWidth: firstObj.useGradient ? firstObj.type !== 'text' ? 460 : 480 : firstObj.type !== 'text' ? 380 : 300, height: 90, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', 
                         flexDirection: 'column', gap: 15
                     }}>
@@ -309,21 +324,21 @@ export function PropertiesPanel() {
                             <label className="labelStyleMobile">Цвет</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: false }))}
-                                    style={{
-                                        flex: 0, padding: "8px", background: !firstObj.useGradient ? "#aa3bff" : "#14151f",
+                                    style={{ flex: 0, padding: "8px", background: !firstObj.useGradient ? "#aa3bff" : "#14151f",
                                         color: "white", border: "1px solid #2e303a", borderRadius: 4,
                                         fontSize: 12, fontWeight: 600
                                     }}>
                                     Сплошной
                                 </button>
+                                { firstObj.type !== 'text' && (
                                 <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: true }))}
-                                    style={{
-                                        flex: 0, padding: "8px", background: firstObj.useGradient ? "#aa3bff" : "#14151f",
+                                    style={{ flex: 0, padding: "8px", background: firstObj.useGradient ? "#aa3bff" : "#14151f",
                                         color: "white", border: "1px solid #2e303a", borderRadius: 4,
                                         fontSize: 12, fontWeight: 600
                                     }}>
                                     Градиент
                                 </button>
+                                )}
                             </div>
                             {!firstObj.useGradient ? (
                                 <div style={{display: "flex", gap: 6, alignItems: "center", marginRight: "auto"}}>
@@ -370,7 +385,7 @@ export function PropertiesPanel() {
                                     <input className='inputAngle' type="number" title='Шаг изменения угла' min={1} max={100}
                                     value={stepValue} onChange={(e) => {
                                         const value = parseInt(e.target.value, 10) || 0;
-                                        setStepValue(value)
+                                        setStepValue(Number.isFinite(value) ? value : 1);
                                     }}
                                         style={{width: "35px", border: "1px solid #2e303a", borderRadius: 12,
                                             padding: "0 4px", textAlign: "center", backgroundColor: "#1e1027",
@@ -392,9 +407,8 @@ export function PropertiesPanel() {
                             />
                         )}
                     </div>
-                    <div style={{
-                        minWidth: 240, background: '#14151f', borderRadius: 12, padding: 10,
-                        border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
+                    { firstObj.type !== 'text' && (
+                    <div className="containerProperty" style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: 12
                     }}>
                         <div style={{display: "grid", gridTemplateColumns: "1fr 120px", gridTemplateRows: "1fr 60px", gap: 5, width: "100%", height: "100%",
                         }}>  
@@ -421,14 +435,13 @@ export function PropertiesPanel() {
                             </button>
                         </div>
                     </div>
+                    )}
                     {firstObj.type !== 'text' && (
-                        <div style={{
-                            minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
-                            border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
-                        }}>
+                        <div className="containerProperty" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <>
                                 <div>
-                                    <span className="labelStyleMobile" style={{fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Прозрачность: {firstObj.opacity.toFixed(2)}
+                                    <span className="labelStyleMobile" style={{fontSize: "13px", display: "flex", justifyContent: "space-between"}}>
+                                        Прозрачность: {firstObj.opacity.toFixed(2)}
                                     <span className="controlsContainerMobileStyle" style={{marginLeft: '18px', justifyContent: 'space-between'}}>
                                         <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'opacity', 0.05, true)} 
                                         className="btnMobileStyle btn-plus">➕</button>
@@ -436,7 +449,8 @@ export function PropertiesPanel() {
                                         className="btnMobileStyle btn-minus">➖</button>
                                     </span>
                                     </span>                                
-                                    <span className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Металличность: {firstObj.metalness.toFixed(2)}
+                                    <span className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>
+                                        Металличность: {firstObj.metalness.toFixed(2)}
                                     <span className="controlsContainerMobileStyle" style={{marginLeft: "9px"}}>
                                     <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj,'metalness', 0.05, true)} 
                                         className="btnMobileStyle btn-plus">➕</button>
@@ -450,13 +464,11 @@ export function PropertiesPanel() {
                     )}
 
                     {firstObj.type !== 'text' && (
-                        <div style={{
-                            minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
-                            border: '1px solid #2e303a', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', gap: 12
-                        }}>
+                        <div className="containerProperty" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <>
                                 <div>
-                                    <span className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Шероховатость: {firstObj.roughness.toFixed(2)}
+                                    <span className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>
+                                        Шероховатость: {firstObj.roughness.toFixed(2)}
                                     <span className="controlsContainerMobileStyle" style={{marginLeft: '18px'}}>
                                     <button onClick={() => changeMaterialProp(updateObj, selectedObjects, firstObj, 'roughness', 0.05, true)} 
                                         className="btnMobileStyle btn-plus">➕</button>
@@ -464,7 +476,8 @@ export function PropertiesPanel() {
                                         >➖</button>
                                     </span>
                                     </span>                                
-                                    <label className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>Каркас: 
+                                    <label className="labelStyleMobile" style={{ fontSize: "13px", display: "flex", justifyContent: "space-between"}}>
+                                        Каркас: 
                                     <span className="controlsContainerMobileStyle" style={{marginLeft: "15px"}}>
                                         <Toggle checked={firstObj.wireframe} onChange={(value) => {
                                             selectedObjects.forEach((obj) => updateObj(obj.id, {wireframe: value}))
@@ -548,6 +561,7 @@ export function PropertiesPanel() {
                         }}>
                         Сплошной
                     </button>
+                    { firstObj.type !== 'text' && (
                     <button onClick={() => selectedObjects.forEach((obj) => updateObj(obj.id, { useGradient: true }))}
                         style={{
                             flex: 1, padding: "8px", background: firstObj.useGradient ? "#aa3bff" : "#14151f",
@@ -556,6 +570,7 @@ export function PropertiesPanel() {
                         }}>
                         Градиент
                     </button>
+                    )}
                 </div>
                     {!firstObj.useGradient ? (
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -652,20 +667,25 @@ export function PropertiesPanel() {
                 <>
                     <div>
                         <label className="labelStyle">Содержимое текста (Enter для новой строки)</label>
-                        <textarea value={firstObj.text || ''} onChange={(e) => {
-                            const val = e.target.value;
-                            selectedObjects.forEach((obj) => {
-                                if (obj.type === 'text') { updateObj(obj.id, { text: val }) };
-                            });
-                        }} rows={4} className="input-style" placeholder="Введите текст...&#10;Enter = новая строка"/>
+                        <textarea value={localText} onChange={ (e) => setLocalText(e.target.value)} 
+                        onKeyDown={(e) => { if (e.altKey && e.key === 'Enter') { e.preventDefault(); handleTextSave(); } }}
+                        rows={4} className="input-style" placeholder="Введите текст...&#10;Enter = новая строка"/>
+                        <button onClick={handleTextSave} 
+                        style={{ background: '#aa3bff', color: 'white', padding: '2px', margin: '1px 3px', borderRadius: '10px', fontWeight: 'bold', 
+                                fontSize: '25px'
+                            }}>
+                                ✉
+                        </button>
                     </div>
                     <div>
                         <label className="labelStyle">Размер шрифта</label>
                         <input className="input-style" type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
                             const value = parseFloat(e.target.value);
-                            selectedObjects.forEach((obj) => {
-                                if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
-                            });
+                            if (Number.isFinite(value)) {
+                                selectedObjects.forEach((obj) => {
+                                    if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
+                                });
+                            }
                         }}
                             style={{ flex: 1, cursor: 'pointer' }}
                         />
@@ -683,9 +703,11 @@ export function PropertiesPanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input type='range' min='0' max='1' step='0.01' value={firstObj.opacity} onChange={(e) => {
                                 const value = parseFloat(e.target.value);
-                                selectedObjects.forEach((obj) => {
-                                    updateObj(obj.id, { opacity: value })
-                                });
+                                if (Number.isFinite(value)) {
+                                    selectedObjects.forEach((obj) => {
+                                        updateObj(obj.id, { opacity: value })
+                                    });
+                                }
                             }}
                                 style={{ flex: 1, cursor: 'pointer' }}
                             />
@@ -703,9 +725,11 @@ export function PropertiesPanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input type='range' min='0' max='1' step='0.01' value={firstObj.metalness} onChange={(e) => {
                                 const value = parseFloat(e.target.value);
-                                selectedObjects.forEach((obj) => {
-                                    updateObj(obj.id, { metalness: value })
-                                });
+                                if (Number.isFinite(value)) {
+                                    selectedObjects.forEach((obj) => {
+                                        updateObj(obj.id, { metalness: value })
+                                    });
+                                }
                             }}
                                 style={{ flex: 1, cursor: 'pointer' }}
                             />
@@ -723,9 +747,11 @@ export function PropertiesPanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input type='range' min='0' max='1' step='0.01' value={firstObj.roughness} onChange={(e) => {
                                 const value = parseFloat(e.target.value);
-                                selectedObjects.forEach((obj) => {
-                                    updateObj(obj.id, { roughness: value })
-                                });
+                                if (Number.isFinite(value)) {
+                                    selectedObjects.forEach((obj) => {
+                                        updateObj(obj.id, { roughness: value })
+                                    });
+                                }
                             }}
                                 style={{ flex: 1, cursor: 'pointer' }}
                             />
