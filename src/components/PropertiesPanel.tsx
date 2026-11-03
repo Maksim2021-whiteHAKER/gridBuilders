@@ -243,6 +243,33 @@ export function PropertiesPanel() {
                     padding: deviceType === 'tablet' ? '16px 20px 24px 32px' : '5px 20px 1px 32px',
                 }}>
                     {/* Карточка: Позиция */}
+                    <div style={{ minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
+                        border: '1px solid #2e303a', scrollSnapAlign: 'start' }}>
+                    {firstObj.type === 'text' && (
+                        <>
+                            <div>
+                                <label className="labelStyle-min">Содержимое текста (Enter для новой строки)</label>
+                                <textarea value={firstObj.text || ''} onChange={(e) => {
+                                    const val = e.target.value;
+                                    selectedObjects.forEach((obj) => {
+                                        if (obj.type === 'text') { updateObj(obj.id, { text: val }) };
+                                    });
+                                }} rows={4} className="input-style-min" placeholder="Введите текст...&#10;Enter = новая строка"/>
+                            </div>
+                            <div>
+                                <label className="labelStyle-min">Размер шрифта</label>
+                                <input className="input-style" type='number' min='0.1' step='0.1' value={firstObj.fontSize || 1} onChange={(e) => {
+                                    const value = parseFloat(e.target.value);
+                                    selectedObjects.forEach((obj) => {
+                                        if (obj.type === 'text') { updateObj(obj.id, { fontSize: value }) };
+                                    });
+                                }}
+                                    style={{ flex: 1, cursor: 'pointer' }}
+                                />
+                            </div>
+                        </>
+                    )}
+                    </div>
                     <div style={{
                         minWidth: 240, background: '#14151f', borderRadius: 12, padding: 14,
                         border: '1px solid #2e303a', scrollSnapAlign: 'start'

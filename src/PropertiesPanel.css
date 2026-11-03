@@ -8,12 +8,31 @@
     font-size: 12px;
 }
 
+.input-style-min {
+    width: 100%;
+    height: 30px;
+    padding: 2px 2px;
+    background: #14151f;
+    border: 1px solid #2e303a;
+    border-radius: 4px;
+    color: #e4e4e7;
+    font-size: 12px;
+}
+
 .labelStyle {
     display: block;
     color: #9ca3af;
     font-size: 12px;
     font-weight: bold;
     margin-bottom: 8px
+}
+
+.labelStyle-min {
+    display: block;
+    color: #9ca3af;
+    font-size: 9px;
+    font-weight: bold;
+    margin-bottom: 4px;
 }
 
 .input-styleMobile {

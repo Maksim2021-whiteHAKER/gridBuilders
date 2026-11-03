@@ -150,16 +150,19 @@ function App() {
             debouncedSaveToLocalStorage.flush(useSceneStore.getState());
         };
 
-        window.addEventListener('beforeunload', handleSaveOnExit);
-        document.addEventListener('visibilitychange', () => {
+        // ✅ Именованная функция-обёртка для корректного добавления и удаления слушателя
+        const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
                 handleSaveOnExit();
             }
-        });
+        };
+
+        window.addEventListener('beforeunload', handleSaveOnExit);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             window.removeEventListener('beforeunload', handleSaveOnExit);
-            document.removeEventListener('visibilitychange', handleSaveOnExit);
+            document.removeEventListener('visibilitychange', handleVisibilityChange); // ✅ Теперь удаляется корректно
         };
     }, []);
 
