@@ -1,5 +1,5 @@
 // /scr/components/PropertiesPanel.tsx
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useSceneStore, type SceneObject } from '../store/sceneStore.js'
 import { useDeviceType } from '../hooks/useDeviceType.js';
 import { GradientPicker } from './GradientPicker.js';
@@ -128,15 +128,18 @@ export function PropertiesPanel() {
 
     const AXIS_COLORS: [string, string, string] = ["#ff5f56", "#48ff73", "#1948ff"]
 
-    // Оставь только этот useEffect для синхронизации при клике на другой объект
-    useEffect(() => {
-        const firstObj = selectedObjects[0];
+    const firstObj = selectedObjects[0] ?? null;
+    const firstObjId = firstObj?.id;
+
+      // ✅ 2. Паттерн "Корректировка состояния во время рендера" (вместо useEffect)
+    const [prevId, setPrevId] = useState(firstObjId);
+    if (firstObjId !== prevId) {
+        setPrevId(firstObjId);
         if (firstObj && firstObj.type === 'text') {
             setLocalText(firstObj.text || '');
         }
-        // Зависимость ТОЛЬКО от ID! Если текст изменится извне, мы это обработаем отдельно (или забьем)
-    }, [selectedObjects[0]?.id]); 
-  
+    }
+
     if (selectedIds.length === 0) {
         if (isSmall) {
             return null
@@ -156,7 +159,6 @@ export function PropertiesPanel() {
     }
 
     const isMultiObj = selectedIds.length > 1;
-    const firstObj = selectedObjects[0] ?? null;
 
     const getGradientPreview = () => {
         if (!firstObj) return undefined
